@@ -1,0 +1,164 @@
+[[model]]
+author: Chon Lok Lei
+name: Lei_2019_37C_IKr_Model1
+# Initial values
+ikr.I = 0
+ikr.CI = 0
+ikr.O = 0
+ikr.C = 1
+#ikr.D = 0
+ikr.ID = 0
+ikr.OD = 0
+membrane.V = -80.0 [mV]
+voltageclamp.Vclamp = -80.0 [mV]
+voltageclamp.Vp = -80.0 [mV]
+voltageclamp.Iout = 0.0 [mV]
+
+[ikr]
+use membrane.V
+IKr = p9 * O * (V - nernst.EK)
+    in [pA]
+    oxmeta: membrane_rapid_delayed_rectifier_potassium_current
+
+k12 = p1 * exp(p2 * V)
+    in [mS/uF]
+k14 = p7 * exp(-p8 * V)
+    in [mS/uF]
+k21 = p3 * exp(-p4 * V)
+    in [mS/uF]
+k41 = p5 * exp(p6 * V)
+    in [mS/uF]
+p1 =  0.000388 [mS/uF]
+    in [mS/uF]
+p2 =  0.060653 [1/mV]
+    in [1/mV]
+p3 =  0.000018 [mS/uF]
+    in [mS/uF]
+p4 =  0.047931 [1/mV]
+    in [1/mV]
+p5 =  0.096048 [mS/uF]
+    in [mS/uF]
+p6 =  0.027623 [1/mV]
+    in [1/mV]
+p7 =  0.007729 [mS/uF]
+    in [mS/uF]
+p8 =  0.027816 [1/mV]
+    in [1/mV]
+p9 = 70.404964 [nS]
+    in [nS]
+    oxmeta: membrane_rapid_delayed_rectifier_potassium_current_conductance
+
+dot(CI) = -k12 * CI + k21 * I + k41 * C - k14 * CI
+    in [1]
+dot(I) = -k14 * I + k41 * O + k12 * CI - k21 * I - (kon * (D ^ hill) * I - koff * ID)
+    in [1]
+dot(O) = -k21 * O + k12 * C + k14 * I - k41 * O - (kon * (D ^ hill) * O - koff * OD)
+    in [1]
+
+#dot(D) = 0
+D = 0
+    in [nM]
+
+kon = 1e-4 [1/ms]
+    in [1/ms]
+koff = 1e-4 [1/ms]
+    in [1/ms]
+hill = 1 [1]
+    in [1]
+dot(ID) = kon * (D ^ hill) * I - koff * ID
+    in [1]
+dot(OD) = kon * (D ^ hill) * O - koff * OD
+    in [1]
+
+dot(C) = - k41 * C + k14 * CI - k12 * C + k21 * O
+#C = 1 - CI - I - O - OD - ID
+    in [1]
+
+[engine]
+time = 0 bind time
+    in [ms]
+pace = 0 bind pace
+
+[membrane]
+use voltageclamp.Vp, voltageclamp.rseries, voltageclamp.voffset_eff
+Iion = ikr.IKr + voltageclamp.ILeak
+    in [pA]
+cm = 28.73291 [pF]  # in order of pF; TODO: fit
+dot(V) = (Vp - V + voffset_eff) / tau - Iion / cm
+    tau = cm * rseries in [ms]
+    desc: membane potential
+    in [mV]
+
+[voltageclamp]
+use membrane.V
+# Parameters
+rseries = 0.0035459050000000002 [GR]  # in order of MegaOhms; TODO: fit
+cprs = 4.7 [pF]  # Unknown value for 'parasitic' capacitance at electrode...
+cprs_est = 0.0 [pF]  # eff. parasitic capacitance at electrode; TODO: fit
+voffset_eff = 0.0 [mV]  # TODO: fit
+rseries_est = 0.0 [GR]  # TODO: later this one use measured value
+cm_est = 0.0 [pF]  # TODO: similar to rseries_est, set value
+alpha_r = 0.0 [1]  # Percentage of Rs compensation
+alpha_p = 0.0 [1]  # Percentage of prediction/supercharging
+
+# Command voltage
+Vc = engine.pace
+    desc: command voltage
+    in [mV]
+
+# Rs compensation and summing delay
+tau_sum = 40e-3 in [ms]  # electronic delay term, ~ 5 - 70 microsecond
+dVclampdt = (Vc - Vclamp) / tau_sum
+    in [mV/ms]
+dot(Vclamp) = dVclampdt
+    desc: clamp voltage
+    in [mV]
+
+# Amplifier delay
+tau_clamp = 0.8 * 1e-3 in [ms]
+dVpdt = (Vclamp - Vp) / tau_clamp in [mV/ms]
+dot(Vp) = dVpdt
+    desc: pipette voltage
+    in [mV]
+
+# Feedback delay
+dot(Iout) = (Iin - Iout) / tau
+    tau = 110 * 1e-3 in [ms]
+    desc: measured current
+    in [pA]
+
+Iin = (
+        (Vp - V + voffset_eff) / rseries
+        + cprs * dVpdt
+    )
+    in [pA]
+
+## assume linear leak residual
+gLeak = 0.707275842333302 [pA/mV]
+ELeak = -41.0892507295633 [mV]
+ILeak = gLeak * (V - ELeak) in [pA]
+
+[extracellular]
+ko = 5 [mM]
+    in [mM]
+    oxmeta: extracellular_potassium_concentration
+    label K_o
+
+[intracellular]
+ki = 140 [mM]
+    in [mM]
+    oxmeta: intracellular_potassium_concentration
+    label K_i
+
+[physical_constants]
+F = 96485 [C/mol]
+    in [C/mol]
+R = 8314 [mJ/mol/K]
+    in [mJ/mol/K]
+T = 298.15 [K]
+    in [K]
+
+[nernst]
+EK = physical_constants.R * physical_constants.T / physical_constants.F * log(extracellular.ko / intracellular.ki)
+    in [mV]
+    oxmeta: potassium_reversal_potential

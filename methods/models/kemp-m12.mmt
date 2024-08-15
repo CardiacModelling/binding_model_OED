@@ -1,0 +1,123 @@
+[[model]]
+name: Kemp model
+author: Frankie Patten-Elliott
+# Initial values
+ikr.C1 = 1.0
+ikr.C2 = 0.0
+ikr.C3 = 0.0
+ikr.O = 0.0
+ikr.I = 0.0
+ikr.ID = 0
+ikr.OD = 0
+ikr.CD = 0
+
+[ikr]
+use physical_constants.R, physical_constants.T, physical_constants.F
+IKr = gkr * O * (membrane.V - nernst.EK)
+    in [nA]
+    oxmeta: membrane_rapid_delayed_rectifier_potassium_current
+
+a_a0 = a_12 * exp(z_12 * membrane.V / (R*T/F))
+a_a1 = a_3O * exp(z_3O * membrane.V / (R*T/F))
+a_i = a_OI * exp(z_OI * membrane.V / (R*T/F))
+a_ci = a_3I * exp(z_3I * membrane.V / (R*T/F))
+
+b_a0 = b_21 * exp(-z_21 * membrane.V / (R*T/F))
+b_a1 = b_O3 * exp(-z_O3 * membrane.V / (R*T/F))
+b_i = b_IO * exp(-z_IO * membrane.V / (R*T/F))
+b_ci = b_I3 * exp(-z_I3 * membrane.V / (R*T/F))
+
+kf = 0.1235
+kb = 0.1911
+
+a_12 = 0.1161
+a_3O = 0.0578
+a_OI = 0.2533
+a_3I = 0.52e-4
+
+b_21 = 0.2442
+b_O3 = 0.349e-3
+b_IO = 0.0522
+b_I3 = 0.85e-8
+
+z_12 = 0.2990
+z_3O = 0.9710
+z_OI = 0.5953
+z_3I = 1.525
+
+z_21 = 1.604
+z_O3 = 1.062
+z_IO = 0.8209
+z_I3 = 1.842
+
+gkr = 33.3 [uS]
+    in [uS]
+    oxmeta: membrane_rapid_delayed_rectifier_potassium_current_conductance
+
+dot(C1) = -a_a0 * C1 + b_a0 * C2
+    in [1]
+dot(C2) = a_a0 * C1 - b_a0 * C2 - kf * C2 + kb * C3
+    in [1]
+dot(C3) = kf * C2 - kb * C3 - a_a1 * C3 + b_a1 * O - a_ci * C3 + b_ci * I
+    in [1]
+dot(O) = a_a1 * C3 - b_a1 * O - a_i * O + b_i * I - (ku * emax * O - ku * OD)
+    in [1]
+dot(I) = a_i * O - b_i * I + a_ci * C3 - b_ci * I - (ku * emax * I - psi * ID)
+    in [1]
+
+D = 0
+    in [nM]
+
+emax = kmax * D ^ hill / (D ^ hill + halfmax)
+X = 1 / (1 + exp(-(membrane.V + vhalf) / 6.789))
+psi = ku * a_i / b_i
+
+kmax = 5
+ku = 1e-03
+hill = 1
+halfmax = 0.15 # EC50^hill
+vhalf = 8
+kt = 3.5e-05 #fixed
+
+dot(ID) = ku * emax * I - psi * ID - kt * ID + kt * X * CD
+    in [1]
+dot(OD) = ku * emax * O - ku * OD - kt * OD + kt * X * CD
+    in [1]
+dot(CD) = kt * OD + kt * ID - (kt * X + kt * X) * CD
+    in [1]
+
+
+[engine]
+time = 0 bind time
+    in [ms]
+pace = 0 bind pace
+
+[membrane]
+V = engine.pace
+    desc: membrane potential
+    in [mV]
+
+[extracellular]
+ko = 5.4 [mM]
+    in [mM]
+    oxmeta: extracellular_potassium_concentration
+    label K_o
+
+[intracellular]
+ki = 130 [mM]
+    in [mM]
+    oxmeta: intracellular_potassium_concentration
+    label K_i
+
+[physical_constants]
+F = 96485 [C/mol]
+    in [C/mol]
+R = 8314 [J/mol/K]
+    in [J/mol/K]
+T = 310 [K]
+    in [K]
+
+[nernst]
+EK = physical_constants.R * physical_constants.T / physical_constants.F * log(extracellular.ko / intracellular.ki)
+    in [mV]
+    oxmeta: potassium_reversal_potential
