@@ -1,6 +1,15 @@
 # Code for generating results and plotting
 The code in this repo generates all synthetic data and figures included in the paper entitled "Optimising experimental designs for model selection of ion channel drug binding mechanisms".
 
+### Requirements
+The code requires Python (3.12.2+) and the dependencies listed in requirements.txt.
+
+To setup, navigate to the path where you downloaded this repo and run
+
+$ python3 -m venv env
+$ source env/bin/activate
+$ pip install -r requirements.txt
+
 ### Structure
 - data: Contains fits to data obtained in the Lei et al. paper "The impact of uncertainty in hERG binding mechanism on in silico predictions of drug-induced proarrhythmic risk". This is used for the initial parameterisations of drug-binding models.
 - methods: Core python code
