@@ -117,7 +117,7 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
                 ax.tick_params(labelbottom=False)
             if j in [1, 2, 4, 5, 7, 8, 10, 11, 13, 14]:
                 ax.tick_params(labelleft=False)
-    plt.savefig(f"{output_folder}/model_fits.png", dpi=1200, bbox_inches='tight')
+    plt.savefig(f"{output_folder}/model_fits.png", dpi=600, bbox_inches='tight')
 
     if args.c:
         # get fitted drug-binding parameters
@@ -155,7 +155,7 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
         ax2.tick_params(axis='both', which='major', labelsize=8.5)
         ax1.set_title('Milnes', fontsize=10)
         ax2.set_title('Optimised Protocol', fontsize=10)
-        plt.savefig(f"{output_folder}/loglikelihoods.png", dpi=1200, bbox_inches='tight')
+        plt.savefig(f"{output_folder}/loglikelihoods.png", dpi=600, bbox_inches='tight')
 
         fig,((ax1,ax2,ax3,ax4,ax5),(ax6,ax7,ax8,ax9,ax10),(ax11,ax12,ax13,ax14,ax15))= plt.subplots(3,5,figsize=(7,4))
         for m, ax in zip(all_model_nums,[ax1,ax2,ax3,ax4,ax5,ax6,ax7,ax8,ax9,ax10,ax11,ax12,ax13,ax14,ax15]):
@@ -183,7 +183,7 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
                 ax.set_yticks([1e-9, 1, 1e9])
                 ax.set_yticklabels(['1e-9', '1', '1e9'])
         plt.tight_layout()
-        plt.savefig(f"{output_folder}/parameter_comparison.png", dpi=1200, bbox_inches='tight')
+        plt.savefig(f"{output_folder}/parameter_comparison.png", dpi=600, bbox_inches='tight')
 
 if __name__ == "__main__":
     concs = parameters.drug_concs[args.d]

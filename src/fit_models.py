@@ -78,7 +78,7 @@ def get_pars(model_num):
         opt = pints.OptimisationController(
                 f, q0, boundaries=bounds, transformation=transform, method=pints.CMAES)
         opt.set_max_iterations(None)
-        opt.set_max_unchanged_iterations(iterations=120, threshold=1)
+        opt.set_max_unchanged_iterations(iterations=100, threshold=100)
         # Run optimisation
         try:
             with np.errstate(all='ignore'): # Tell numpy not to issue warnings

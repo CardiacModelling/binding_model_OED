@@ -110,7 +110,7 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
 
     opt.optimiser().set_population_size(CMAES_pop)
     opt.set_max_iterations(max_iter)
-    opt.set_max_unchanged_iterations(iterations=20, threshold=1e-3)
+    opt.set_max_unchanged_iterations(iterations=20, threshold=1e-2)
     opt.set_parallel(-1)
 
     try:
