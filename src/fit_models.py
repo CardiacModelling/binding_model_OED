@@ -40,7 +40,11 @@ def get_pars(model_num):
     likelihoods = []
     for conc in concs:
         # Create forward models
-        model = classes.ConcatMilnesModel(f'm{model_num}', protocol, times,
+        if herg_model != 'kemp':
+            model = classes.ConcatMilnesModel(f'm{model_num}', protocol, times,
+                                          win, conc, param_dict)
+        else:
+            model = classes.ConcatMilnesModel(f'kemp-m{model_num}', protocol, times,
                                           win, conc, param_dict)
         # Load data
         u = np.loadtxt(
@@ -101,9 +105,13 @@ if __name__ == "__main__":
     max_time = args.t
     bounds = args.b
     concs = parameters.drug_concs[args.c]
-    with open(f'methods/models/params/{p_path}', newline='') as csvfile:
-        p_reader = csv.reader(csvfile)
-        param_dict = {rows[0]:float(rows[1]) for rows in p_reader}
+    herg_model = p_path.split(".")[0]
+    if herg_model != 'kemp':
+        with open(f'methods/models/params/{p_path}', newline='') as csvfile:
+            p_reader = csv.reader(csvfile)
+            param_dict = {rows[0]:float(rows[1]) for rows in p_reader}
+    else:
+        param_dict = {}
 
     ### Set protocol, outdir and sweep window
     protocol = prot

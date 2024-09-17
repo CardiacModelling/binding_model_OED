@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=38g
-#SBATCH --time=00:15:00
+#SBATCH --time=00:10:00
 
 module use $HOME/.local/easybuild/modules/all
 module load gcc-uoneasy/12.3.0
@@ -15,11 +15,11 @@ conda activate env
 # Define experiment
 compound=$1
 true_model=$2
-herg='2019_37C'
+herg='kemp'
 models="['1','2','2i','3','4','5','5i','6','7','8','9','10','11','12','13']"
 
 # Set output directory
-dir="outputs/${compound}/model_${true_model}_${compound}_kemp"
+dir="outputs/${compound}/model_${true_model}_${compound}_disc"
 
 # Plot fitting results
 python src/post_fit_plot.py -m ${models} -p 'protocols/Milnes_Phil_Trans.mmt' -o ${dir} -e ${herg} -d ${compound}

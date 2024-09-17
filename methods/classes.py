@@ -42,7 +42,10 @@ class ConcatMilnesModel(pints.ForwardModel):
                             protocol,
                             parameters=['binding'],
                             analytical=True)
-        model_num = model[1:]
+        if model.split("-")[0] != 'kemp':
+            model_num = model[1:]
+        else:
+            model_num = model.split("-")[1][1:]
         if model_num in ['12', '13']:
             self._model.fix_kt()
         self._win = win
@@ -54,7 +57,8 @@ class ConcatMilnesModel(pints.ForwardModel):
         self._times = times
         # Simulate dose free (control)
         self._model.set_dose(0)
-        self._model.set_fix_parameters(param_dict)
+        if model.split("-")[0] != 'kemp':
+            self._model.set_fix_parameters(param_dict)
         z = np.ones(self._model.n_parameters())
         self._before = self._model.simulate(z, self._times)[self._win]
 

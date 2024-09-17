@@ -15,7 +15,7 @@ conda activate env
 # Define experiment
 compound=$1
 true_model=$2
-herg='kemp'
+herg='2019_37C'
 models="['1','2','2i','3','4','5','5i','6','7','8','9','10','11','12','13']"
 fit_reps=10
 
@@ -23,7 +23,7 @@ fit_reps=10
 models_bash=(${models//[\[\]\'\,]/ })
 
 # Set output directory
-dir="outputs/${compound}/model_${true_model}_${compound}_kemp"
+dir="outputs/${compound}/model_${true_model}_${compound}_disc"
 
 # Generate synthetic data
 echo "Generating synthetic data..."
@@ -33,7 +33,7 @@ python src/generate_synthetic_data.py -m ${true_model} -p 'protocols/Milnes_Phil
 echo "Fitting splines..."
 python src/fit_spline.py -i ${dir} -o ${dir}
 
-herg='2019_37C'
+herg='kemp'
 
 # Fit models to synthetic data
 JOB_ID=$(sbatch src/run_multi_fit.sh ${dir} ${compound} ${fit_reps} ${herg} "${models_bash[@]}" | awk '{print $4}')
@@ -63,7 +63,7 @@ alt_win_str="[${alt_win[@]}]"
 alt_win_str=$(echo $alt_win_str | sed 's/ /,/g')
 wins_str="[[1000,11000],$alt_win_str]"
 
-herg='kemp'
+herg='2019_37C'
 
 # Generate new synthetic data
 echo "Generating new synthetic data..."
@@ -73,7 +73,7 @@ python src/generate_synthetic_data.py -m ${true_model} -p "${dir}/opt_prot.mmt" 
 echo "Fitting splines..."
 python src/fit_spline.py -i "${dir}/opt_synth_data" -o "${dir}/opt_synth_data" -m "opt"
 
-herg='2019_37C'
+herg='kemp'
 
 # Fit models to synthetic data
 JOB_ID=$(sbatch src/run_multi_fit_opt.sh ${dir} ${compound} ${fit_reps} ${herg} "${models_bash[@]}" | awk '{print $4}')

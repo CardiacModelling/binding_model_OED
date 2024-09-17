@@ -15,7 +15,7 @@ conda activate env
 # Define experiment
 compound=$1
 true_model=$2
-herg='2019_37C'
+herg='kemp'
 models="['1','2','2i','3','4','5','5i','6','7','8','9','10','11','12','13']"
 fit_reps=10
 
