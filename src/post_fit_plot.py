@@ -62,9 +62,10 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
 
     synth_Zfit_all = {}
     for m in all_model_nums:
-        drug_vals = drug_fit_pars[m]
-        _, synth_Yfit, synth_Zfit, _, _, _, ts, _ = funcs.generate_data(herg, drug_vals, prot, 0, max_time, bounds, m, concs)
-        synth_Zfit_all[m] = synth_Zfit
+        if m in model_nums:
+            drug_vals = drug_fit_pars[m]
+            _, synth_Yfit, synth_Zfit, _, _, _, ts, _ = funcs.generate_data(herg, drug_vals, prot, 0, max_time, bounds, m, concs)
+            synth_Zfit_all[m] = synth_Zfit
 
     xticks = []
     for i in np.arange(0, swps):
@@ -73,69 +74,74 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
     xlims=[(xval-swp_len/2, xval+swp_len/2) for xval in xticks]
 
     # Create a 5x3 grid of subplots
-
     fig = plt.figure(figsize=(7, 7))
     outer = gridspec.GridSpec(5, 3, wspace=0.15, hspace=0.45)
     for j, m in enumerate(all_model_nums):
-        inner = gridspec.GridSpecFromSubplotSpec(1, 10,
-                            subplot_spec=outer[j], wspace=0.3)
-        for i, lim in zip(np.arange(0, 10), xlims):
-            ax = plt.Subplot(fig, inner[i])
-            for conc, col in zip(concs, colrs):
-                dfconc = pd.read_csv(f"{output_folder}/fb_synthetic_conc_{conc}_full.csv")
-                ax.plot(dfconc['time'], dfconc['current'], alpha = 0.2, color = col)
+        if m in model_nums:
+            inner = gridspec.GridSpecFromSubplotSpec(1, 10,
+                                subplot_spec=outer[j], wspace=0.3)
+            for i, lim in zip(np.arange(0, 10), xlims):
+                ax = plt.Subplot(fig, inner[i])
+                for conc, col in zip(concs, colrs):
+                    dfconc = pd.read_csv(f"{output_folder}/fb_synthetic_conc_{conc}_full.csv")
+                    ax.plot(dfconc['time'], dfconc['current'], alpha = 0.2, color = col)
+                    if i == 0 and j == 2:
+                        ax.plot(dfconc['time'], synth_Zfit_all[m][conc], alpha = 0.8, color = col, label = f'{conc}nM')
+                    else:
+                        ax.plot(dfconc['time'], synth_Zfit_all[m][conc], alpha = 0.8, color = col)
+                ax.set_xlim(lim[0], lim[1])
+                ax.spines.right.set_visible(False)
+                ax.spines.top.set_visible(False)
+                if i != 0:
+                    ax.spines.left.set_visible(False)
+                    ax.tick_params(labeltop=False, left=False, top=False, right=False, labelright=False, labelleft=False)
+                ax.set_xticks([(lim[1] + lim[0])/2], [i+1])
+                d = .5
+                kwargs = dict(marker=[(-.5, -d), (.5, d)], markersize=6,
+                        linestyle="none", color='k', mec='k', mew=1, clip_on=False)
+                if i != 9:
+                    ax.plot([1], [0], transform=ax.transAxes, **kwargs)
+                if i != 0:
+                    ax.plot([0], [0], transform=ax.transAxes, **kwargs)
+                ax.set_ylim(top = 1.5, bottom = -0.2)
+                ax.set_yticks(np.array([0,0.5,1,1.5]))
+                if i == 4:
+                    ax.set_title(f'    Model {m}', fontsize = 10)
+                    if j in [12, 13, 14]:
+                        ax.set_xlabel('    Pulse', fontsize = 10)
+                if i == 0 and (j in [0, 3, 6, 9, 12]):
+                    ax.set_ylabel('Proportion\n open', fontsize = 10)
+                fig.add_subplot(ax)
                 if i == 0 and j == 2:
-                    ax.plot(dfconc['time'], synth_Zfit_all[m][conc], alpha = 0.8, color = col, label = f'{conc}nM')
-                else:
-                    ax.plot(dfconc['time'], synth_Zfit_all[m][conc], alpha = 0.8, color = col)
-            ax.set_xlim(lim[0], lim[1])
-            ax.spines.right.set_visible(False)
-            ax.spines.top.set_visible(False)
-            if i != 0:
-                ax.spines.left.set_visible(False)
-                ax.tick_params(labeltop=False, left=False, top=False, right=False, labelright=False, labelleft=False)
-            ax.set_xticks([(lim[1] + lim[0])/2], [i+1])
-            d = .5
-            kwargs = dict(marker=[(-.5, -d), (.5, d)], markersize=6,
-                    linestyle="none", color='k', mec='k', mew=1, clip_on=False)
-            if i != 9:
-                ax.plot([1], [0], transform=ax.transAxes, **kwargs)
-            if i != 0:
-                ax.plot([0], [0], transform=ax.transAxes, **kwargs)
-            ax.set_ylim(top = 1.5, bottom = -0.2)
-            ax.set_yticks(np.array([0,0.5,1,1.5]))
-            if i == 4:
-                ax.set_title(f'    Model {m}', fontsize = 10)
-                if j in [12, 13, 14]:
-                    ax.set_xlabel('    Pulse', fontsize = 10)
-            if i == 0 and (j in [0, 3, 6, 9, 12]):
-                ax.set_ylabel('Proportion\n open', fontsize = 10)
-            fig.add_subplot(ax)
-            if i == 0 and j == 2:
-                ax.legend(bbox_to_anchor=(7.5, 1.35), fontsize = 10, ncol = 4)
-            if j not in [12, 13, 14]:
-                ax.tick_params(labelbottom=False)
-            if j in [1, 2, 4, 5, 7, 8, 10, 11, 13, 14]:
-                ax.tick_params(labelleft=False)
+                    ax.legend(bbox_to_anchor=(7.5, 1.35), fontsize = 10, ncol = 4)
+                if j not in [12, 13, 14]:
+                    ax.tick_params(labelbottom=False)
+                if j in [1, 2, 4, 5, 7, 8, 10, 11, 13, 14]:
+                    ax.tick_params(labelleft=False)
     plt.savefig(f"{output_folder}/model_fits.png", dpi=600, bbox_inches='tight')
 
     if args.c:
         # get fitted drug-binding parameters
         drug_fit_pars_non_opt = {}
         drug_fit_score_non_opt = []
+        non_opt_model_nums = []
         for j, m in enumerate(model_nums):
-            df = pd.read_csv(f'{output_folder.split("/")[0]}/{output_folder.split("/")[1]}/{output_folder.split("/")[2]}/fits/{model_nums[j]}_fit_{int(length/2)}_points.csv')
-            parstring = df.loc[df['score'].idxmax()]['pars']
-            cleaned_string = parstring.replace("[", "").replace("]", "").replace("\n", "").strip()
-            parlist = [float(i) for i in cleaned_string.split(" ") if i]
-            drug_fit_pars_non_opt[m] = parlist
-            drug_fit_score_non_opt.append(max(df['score']))
+            try:
+                df = pd.read_csv(f'{output_folder.split("/")[0]}/{output_folder.split("/")[1]}/{output_folder.split("/")[2]}/fits/{model_nums[j]}_fit_{int(length/2)}_points.csv')
+                parstring = df.loc[df['score'].idxmax()]['pars']
+                cleaned_string = parstring.replace("[", "").replace("]", "").replace("\n", "").strip()
+                parlist = [float(i) for i in cleaned_string.split(" ") if i]
+                drug_fit_pars_non_opt[m] = parlist
+                drug_fit_score_non_opt.append(max(df['score']))
+                non_opt_model_nums.append(m)
+            except:
+                print(f"Model {m} was not fitted in the non-optimal case")
 
         fig = plt.figure(figsize=(7, 2))
         gs = gridspec.GridSpec(1, 2, wspace = 0.045)
         ax1 = plt.subplot(gs[0, 0])
         ax2 = plt.subplot(gs[0, 1])
-        ax1.scatter(all_model_nums,drug_fit_score_non_opt,marker = 'x',color = '#1E152A')
+        ax1.scatter(non_opt_model_nums,drug_fit_score_non_opt,marker = 'x',color = '#1E152A')
         ax2.scatter(all_model_nums,drug_fit_score,marker = 'x',color = '#1E152A')
         ax1.set_ylabel('Maximised log-likelihood',fontsize=10)
         ax1.set_xlabel('Fitted model',fontsize=10)
@@ -157,33 +163,34 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
         ax2.set_title('Optimised Protocol', fontsize=10)
         plt.savefig(f"{output_folder}/loglikelihoods.png", dpi=600, bbox_inches='tight')
 
-        fig,((ax1,ax2,ax3,ax4,ax5),(ax6,ax7,ax8,ax9,ax10),(ax11,ax12,ax13,ax14,ax15))= plt.subplots(3,5,figsize=(7,4))
-        for m, ax in zip(all_model_nums,[ax1,ax2,ax3,ax4,ax5,ax6,ax7,ax8,ax9,ax10,ax11,ax12,ax13,ax14,ax15]):
-            if m in all_model_nums:
-                if m not in ['1', '5', '9']:
-                    ax.tick_params(labelleft=False)
-                if m not in ['9', '10', '11', '12', '13']:
-                    ax.tick_params(labelbottom=False)
-                ax.plot(np.arange(0, 1e10, 1e9), np.arange(0, 1e10, 1e9), linestyle = '--', color = 'k', alpha = 0.25)
-                ax.scatter(drug_fit_pars[m][:-1], drug_fit_pars_non_opt[m][:-1],  marker = 'x', s = 40)
-                ax.set_xlim(left = 1e-10, right = 1e10)
-                ax.set_ylim(bottom = 1e-10, top = 1e10)
-                ax.set_yscale('log')
-                ax.set_xscale('log')
-                ax.text(0.05, 0.95, m, transform=ax.transAxes, fontsize=10,
-                    verticalalignment='top')
-                if ax in [ax1, ax6, ax11]:
-                    ax.set_ylabel('Milnes', fontsize = 10)
-                if ax in [ax11, ax12, ax13, ax14, ax15]:
-                    ax.set_xlabel('Optimised', fontsize = 10)
-                ax.tick_params(axis='both', which='major', labelsize=10)
-                ax.tick_params(axis='both', which='minor', labelsize=10)
-                ax.set_xticks([1e-9, 1, 1e9])
-                ax.set_xticklabels(['1e-9', '1', '1e9'])
-                ax.set_yticks([1e-9, 1, 1e9])
-                ax.set_yticklabels(['1e-9', '1', '1e9'])
-        plt.tight_layout()
-        plt.savefig(f"{output_folder}/parameter_comparison.png", dpi=600, bbox_inches='tight')
+        if model_nums == non_opt_model_nums:
+            fig,((ax1,ax2,ax3,ax4,ax5),(ax6,ax7,ax8,ax9,ax10),(ax11,ax12,ax13,ax14,ax15))= plt.subplots(3,5,figsize=(7,4))
+            for m, ax in zip(all_model_nums,[ax1,ax2,ax3,ax4,ax5,ax6,ax7,ax8,ax9,ax10,ax11,ax12,ax13,ax14,ax15]):
+                if m in all_model_nums:
+                    if m not in ['1', '5', '9']:
+                        ax.tick_params(labelleft=False)
+                    if m not in ['9', '10', '11', '12', '13']:
+                        ax.tick_params(labelbottom=False)
+                    ax.plot(np.arange(0, 1e10, 1e9), np.arange(0, 1e10, 1e9), linestyle = '--', color = 'k', alpha = 0.25)
+                    ax.scatter(drug_fit_pars[m][:-1], drug_fit_pars_non_opt[m][:-1],  marker = 'x', s = 40)
+                    ax.set_xlim(left = 1e-10, right = 1e10)
+                    ax.set_ylim(bottom = 1e-10, top = 1e10)
+                    ax.set_yscale('log')
+                    ax.set_xscale('log')
+                    ax.text(0.05, 0.95, m, transform=ax.transAxes, fontsize=10,
+                        verticalalignment='top')
+                    if ax in [ax1, ax6, ax11]:
+                        ax.set_ylabel('Milnes', fontsize = 10)
+                    if ax in [ax11, ax12, ax13, ax14, ax15]:
+                        ax.set_xlabel('Optimised', fontsize = 10)
+                    ax.tick_params(axis='both', which='major', labelsize=10)
+                    ax.tick_params(axis='both', which='minor', labelsize=10)
+                    ax.set_xticks([1e-9, 1, 1e9])
+                    ax.set_xticklabels(['1e-9', '1', '1e9'])
+                    ax.set_yticks([1e-9, 1, 1e9])
+                    ax.set_yticklabels(['1e-9', '1', '1e9'])
+            plt.tight_layout()
+            plt.savefig(f"{output_folder}/parameter_comparison.png", dpi=600, bbox_inches='tight')
 
 if __name__ == "__main__":
     concs = parameters.drug_concs[args.d]
