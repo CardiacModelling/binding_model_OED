@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(description='Spline fitting')
 parser.add_argument('-i', type=str, required=True, help='Input folder')
 parser.add_argument('-o', type=str, required=True, help='Output folder')
 parser.add_argument('-l', type=float, default=5, help='Smoothing parameter lambda')
-parser.add_argument('-m', type=str, default='milnes', help='Milnes or optimal')
+parser.add_argument('-m', type=str, default='milnes', help='Milnes, opt, or real')
 args = parser.parse_args()
 
 def main(input, output, lambda_, data):
@@ -23,10 +23,14 @@ def main(input, output, lambda_, data):
     if data == 'milnes':
         t_swp = 10000
         swps = sweeps
-    else:
+    elif data == 'opt':
         t_swp = 3340
         t_total = 0
         swps = sweeps*3
+    else:
+        lens = [3340, 3330, 3340, 3330, 3330]
+        t_total = 0
+        swps = sweeps*5
     n_order = 4
     all_ = []
 
@@ -35,7 +39,7 @@ def main(input, output, lambda_, data):
         if data == 'milnes':
             df_rep = df_all[(df_all['t'] >= t_swp * i) & (df_all['t'] < t_swp * (i + 1))][['t', 'x']]
             knots = np.arange(t_swp * i, t_swp * (i + 1) + t_swp/2, t_swp/2)
-        else:
+        elif data == 'opt':
             df_rep = df_all[(df_all['t'] >= t_total) & (df_all['t'] < t_total + t_swp)][['t', 'x']]
             knots = np.arange(t_total, t_total + t_swp, t_swp/2)
             t_total += t_swp
@@ -43,6 +47,12 @@ def main(input, output, lambda_, data):
                 t_swp = 3330
             elif (t_total % 10000 == 0):
                 t_swp = 3340
+        else:
+            ind = int(i % 5)
+            t_swp = lens[ind]
+            df_rep = df_all[(df_all['t'] >= t_total) & (df_all['t'] < t_total + t_swp)][['t', 'x']]
+            knots = np.arange(t_total, t_total + t_swp, t_swp/2)
+            t_total += t_swp
         bsplines = skfda.representation.basis.BSplineBasis(knots=knots, order=n_order)
         phi = np.array(bsplines(df_rep['t'].values)).T[0]
 

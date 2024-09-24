@@ -1,3 +1,7 @@
 output/
 outputs/
+outputs_*/
 .DS_Store
+Frankie_Experiments_Nov_Dec_2023/
+pcpostprocess/
+syncropatch_export/
