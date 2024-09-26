@@ -32,12 +32,16 @@ parser.add_argument('-d', type=str, help='drug compound')
 args = parser.parse_args()
 
 def main(model_nums, prot, max_time, bounds, herg, output_folder):
-    if max_time == 15e3:
+    if max_time == 15e3 and herg != '2024_Joey_sis_25C':
         swps = sweeps
-    else:
+    elif herg != '2024_Joey_sis_25C':
         swps = 5
+    else:
+        swps = 10
 
     swp_len=10e3
+    if herg == '2024_Joey_sis_25C':
+        swp_len=[3340, 3330, 10e3]
 
     # define simulation time
     times = np.arange(0, max_time, steps)
@@ -69,9 +73,24 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
 
     xticks = []
     for i in np.arange(0, swps):
+        s_j = 0
         for b in bounds:
-            xticks.append(b[0] + swp_len/2 + i*len(synth_Yfit)/(2*swps))
-    xlims=[(xval-swp_len/2, xval+swp_len/2) for xval in xticks]
+            if herg != '2024_Joey_sis_25C':
+                xticks.append(b[0] + swp_len/2 + i*len(synth_Yfit)/(2*swps))
+            else:
+                xticks.append(b[0] + swp_len[s_j]/2 + i*len(synth_Yfit)/(2*swps))
+                s_j+=1
+    if herg != '2024_Joey_sis_25C':
+        xlims=[(xval-swp_len/2, xval+swp_len/2) for xval in xticks]
+    else:
+        xlims=[]
+        for xval in xticks:
+            s_j = 0
+            xlims.append((xval-swp_len[s_j]/2, xval+swp_len[s_j]/2))
+            if s_j < 2:
+                s_j+=1
+            else:
+                s_j=0
 
     # Create a 5x3 grid of subplots
     fig = plt.figure(figsize=(7, 7))
@@ -121,79 +140,100 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
     plt.savefig(f"{output_folder}/model_fits.png", dpi=600, bbox_inches='tight')
 
     if args.c:
-        # get fitted drug-binding parameters
-        drug_fit_pars_non_opt = {}
-        drug_fit_score_non_opt = []
-        non_opt_model_nums = []
-        for j, m in enumerate(model_nums):
-            try:
-                df = pd.read_csv(f'{output_folder.split("/")[0]}/{output_folder.split("/")[1]}/{output_folder.split("/")[2]}/fits/{model_nums[j]}_fit_{int(length/2)}_points.csv')
-                parstring = df.loc[df['score'].idxmax()]['pars']
-                cleaned_string = parstring.replace("[", "").replace("]", "").replace("\n", "").strip()
-                parlist = [float(i) for i in cleaned_string.split(" ") if i]
-                drug_fit_pars_non_opt[m] = parlist
-                drug_fit_score_non_opt.append(max(df['score']))
-                non_opt_model_nums.append(m)
-            except:
-                print(f"Model {m} was not fitted in the non-optimal case")
+        if herg != '2024_Joey_sis_25C':
+            # get fitted drug-binding parameters
+            drug_fit_pars_non_opt = {}
+            drug_fit_score_non_opt = []
+            non_opt_model_nums = []
+            for j, m in enumerate(model_nums):
+                try:
+                    df = pd.read_csv(f'{output_folder.split("/")[0]}/{output_folder.split("/")[1]}/{output_folder.split("/")[2]}/fits/{model_nums[j]}_fit_{int(length/2)}_points.csv')
+                    parstring = df.loc[df['score'].idxmax()]['pars']
+                    cleaned_string = parstring.replace("[", "").replace("]", "").replace("\n", "").strip()
+                    parlist = [float(i) for i in cleaned_string.split(" ") if i]
+                    drug_fit_pars_non_opt[m] = parlist
+                    drug_fit_score_non_opt.append(max(df['score']))
+                    non_opt_model_nums.append(m)
+                except:
+                    print(f"Model {m} was not fitted in the non-optimal case")
+            fig = plt.figure(figsize=(7, 2))
+            gs = gridspec.GridSpec(1, 2, wspace = 0.045)
+            ax1 = plt.subplot(gs[0, 0])
+            ax2 = plt.subplot(gs[0, 1])
+            ax1.scatter(non_opt_model_nums,drug_fit_score_non_opt,marker = 'x',color = '#1E152A')
+            ax2.scatter(all_model_nums,drug_fit_score,marker = 'x',color = '#1E152A')
+            ax1.set_ylabel('Maximised log-likelihood',fontsize=10)
+            ax1.set_xlabel('Fitted model',fontsize=10)
+            ax2.set_xlabel('Fitted model',fontsize=10)
+            ax2.tick_params(labelleft=False)
+            ax1.axhline(np.max(drug_fit_score_non_opt)-10000, color = 'g', linestyle = '--', alpha = 0.5, label = '$10^4$ below max.')
+            ax1.axhline(np.max(drug_fit_score_non_opt)-100000, color = 'r', linestyle = '--', alpha = 0.5, label = '$10^5$ below max.')
+            ax2.axhline(np.max(drug_fit_score)-10000, color = 'g', linestyle = '--', alpha = 0.5, label = '$10^4$ below max.')
+            ax2.axhline(np.max(drug_fit_score)-100000, color = 'r', linestyle = '--', alpha = 0.5, label = '$10^5$ below max.')
+            ax1.axvspan(7.5, 8.5, alpha=0.2, color='grey', label = 'data-generating model')
+            ax2.axvspan(7.5, 8.5, alpha=0.2, color='grey', label = 'data-generating model')
+            minx = np.min([np.min(drug_fit_score), np.min(drug_fit_score_non_opt)])
+            maxx = np.max([np.max(drug_fit_score), np.max(drug_fit_score_non_opt)])
+            ax1.set_ylim(bottom = minx-100000, top = maxx+100000)
+            ax2.set_ylim(bottom = minx-100000, top = maxx+100000)
+            ax1.tick_params(axis='both', which='major', labelsize=8.5)
+            ax2.tick_params(axis='both', which='major', labelsize=8.5)
+            ax1.set_title('Milnes', fontsize=10)
+            ax2.set_title('Optimised Protocol', fontsize=10)
+            plt.savefig(f"{output_folder}/loglikelihoods.png", dpi=600, bbox_inches='tight')
+        else:
+            fig, ax = plt.subplots(figsize=(7, 2))
+            ax.scatter(all_model_nums,drug_fit_score,marker = 'x',color = '#1E152A')
+            ax.set_ylabel('Maximised log-likelihood',fontsize=10)
+            ax.set_xlabel('Fitted model',fontsize=10)
+            ax.axhline(np.max(drug_fit_score)-10000, color = 'g', linestyle = '--', alpha = 0.5, label = '$10^4$ below max.')
+            ax.axhline(np.max(drug_fit_score)-100000, color = 'r', linestyle = '--', alpha = 0.5, label = '$10^5$ below max.')
+            minx = np.min(drug_fit_score)
+            maxx = np.max(drug_fit_score)
+            ax.set_ylim(bottom = minx-100000, top = maxx+100000)
+            ax.tick_params(axis='both', which='major', labelsize=8.5)
+            ax.set_title('Optimised Protocol', fontsize=10)
+            plt.savefig(f"{output_folder}/loglikelihoods.png", dpi=600, bbox_inches='tight')
 
-        fig = plt.figure(figsize=(7, 2))
-        gs = gridspec.GridSpec(1, 2, wspace = 0.045)
-        ax1 = plt.subplot(gs[0, 0])
-        ax2 = plt.subplot(gs[0, 1])
-        ax1.scatter(non_opt_model_nums,drug_fit_score_non_opt,marker = 'x',color = '#1E152A')
-        ax2.scatter(all_model_nums,drug_fit_score,marker = 'x',color = '#1E152A')
-        ax1.set_ylabel('Maximised log-likelihood',fontsize=10)
-        ax1.set_xlabel('Fitted model',fontsize=10)
-        ax2.set_xlabel('Fitted model',fontsize=10)
-        ax2.tick_params(labelleft=False)
-        ax1.axhline(np.max(drug_fit_score_non_opt)-10000, color = 'g', linestyle = '--', alpha = 0.5, label = '$10^4$ below max.')
-        ax1.axhline(np.max(drug_fit_score_non_opt)-100000, color = 'r', linestyle = '--', alpha = 0.5, label = '$10^5$ below max.')
-        ax2.axhline(np.max(drug_fit_score)-10000, color = 'g', linestyle = '--', alpha = 0.5, label = '$10^4$ below max.')
-        ax2.axhline(np.max(drug_fit_score)-100000, color = 'r', linestyle = '--', alpha = 0.5, label = '$10^5$ below max.')
-        ax1.axvspan(7.5, 8.5, alpha=0.2, color='grey', label = 'data-generating model')
-        ax2.axvspan(7.5, 8.5, alpha=0.2, color='grey', label = 'data-generating model')
-        minx = np.min([np.min(drug_fit_score), np.min(drug_fit_score_non_opt)])
-        maxx = np.max([np.max(drug_fit_score), np.max(drug_fit_score_non_opt)])
-        ax1.set_ylim(bottom = minx-100000, top = maxx+100000)
-        ax2.set_ylim(bottom = minx-100000, top = maxx+100000)
-        ax1.tick_params(axis='both', which='major', labelsize=8.5)
-        ax2.tick_params(axis='both', which='major', labelsize=8.5)
-        ax1.set_title('Milnes', fontsize=10)
-        ax2.set_title('Optimised Protocol', fontsize=10)
-        plt.savefig(f"{output_folder}/loglikelihoods.png", dpi=600, bbox_inches='tight')
-
-        if model_nums == non_opt_model_nums:
-            fig,((ax1,ax2,ax3,ax4,ax5),(ax6,ax7,ax8,ax9,ax10),(ax11,ax12,ax13,ax14,ax15))= plt.subplots(3,5,figsize=(7,4))
-            for m, ax in zip(all_model_nums,[ax1,ax2,ax3,ax4,ax5,ax6,ax7,ax8,ax9,ax10,ax11,ax12,ax13,ax14,ax15]):
-                if m in all_model_nums:
-                    if m not in ['1', '5', '9']:
-                        ax.tick_params(labelleft=False)
-                    if m not in ['9', '10', '11', '12', '13']:
-                        ax.tick_params(labelbottom=False)
-                    ax.plot(np.arange(0, 1e10, 1e9), np.arange(0, 1e10, 1e9), linestyle = '--', color = 'k', alpha = 0.25)
-                    ax.scatter(drug_fit_pars[m][:-1], drug_fit_pars_non_opt[m][:-1],  marker = 'x', s = 40)
-                    ax.set_xlim(left = 1e-10, right = 1e10)
-                    ax.set_ylim(bottom = 1e-10, top = 1e10)
-                    ax.set_yscale('log')
-                    ax.set_xscale('log')
-                    ax.text(0.05, 0.95, m, transform=ax.transAxes, fontsize=10,
-                        verticalalignment='top')
-                    if ax in [ax1, ax6, ax11]:
-                        ax.set_ylabel('Milnes', fontsize = 10)
-                    if ax in [ax11, ax12, ax13, ax14, ax15]:
-                        ax.set_xlabel('Optimised', fontsize = 10)
-                    ax.tick_params(axis='both', which='major', labelsize=10)
-                    ax.tick_params(axis='both', which='minor', labelsize=10)
-                    ax.set_xticks([1e-9, 1, 1e9])
-                    ax.set_xticklabels(['1e-9', '1', '1e9'])
-                    ax.set_yticks([1e-9, 1, 1e9])
-                    ax.set_yticklabels(['1e-9', '1', '1e9'])
-            plt.tight_layout()
-            plt.savefig(f"{output_folder}/parameter_comparison.png", dpi=600, bbox_inches='tight')
+        if herg != '2024_Joey_sis_25C':
+            if model_nums == non_opt_model_nums:
+                fig,((ax1,ax2,ax3,ax4,ax5),(ax6,ax7,ax8,ax9,ax10),(ax11,ax12,ax13,ax14,ax15))= plt.subplots(3,5,figsize=(7,4))
+                for m, ax in zip(all_model_nums,[ax1,ax2,ax3,ax4,ax5,ax6,ax7,ax8,ax9,ax10,ax11,ax12,ax13,ax14,ax15]):
+                    if m in all_model_nums:
+                        if m not in ['1', '5', '9']:
+                            ax.tick_params(labelleft=False)
+                        if m not in ['9', '10', '11', '12', '13']:
+                            ax.tick_params(labelbottom=False)
+                        ax.plot(np.arange(0, 1e10, 1e9), np.arange(0, 1e10, 1e9), linestyle = '--', color = 'k', alpha = 0.25)
+                        ax.scatter(drug_fit_pars[m][:-1], drug_fit_pars_non_opt[m][:-1],  marker = 'x', s = 40)
+                        ax.set_xlim(left = 1e-10, right = 1e10)
+                        ax.set_ylim(bottom = 1e-10, top = 1e10)
+                        ax.set_yscale('log')
+                        ax.set_xscale('log')
+                        ax.text(0.05, 0.95, m, transform=ax.transAxes, fontsize=10,
+                            verticalalignment='top')
+                        if ax in [ax1, ax6, ax11]:
+                            ax.set_ylabel('Milnes', fontsize = 10)
+                        if ax in [ax11, ax12, ax13, ax14, ax15]:
+                            ax.set_xlabel('Optimised', fontsize = 10)
+                        ax.tick_params(axis='both', which='major', labelsize=10)
+                        ax.tick_params(axis='both', which='minor', labelsize=10)
+                        ax.set_xticks([1e-9, 1, 1e9])
+                        ax.set_xticklabels(['1e-9', '1', '1e9'])
+                        ax.set_yticks([1e-9, 1, 1e9])
+                        ax.set_yticklabels(['1e-9', '1', '1e9'])
+                plt.tight_layout()
+                plt.savefig(f"{output_folder}/parameter_comparison.png", dpi=600, bbox_inches='tight')
 
 if __name__ == "__main__":
-    concs = parameters.drug_concs[args.d]
+    if args.e != '2024_Joey_sis_25C':
+        concs = parameters.drug_concs[args.d]
+    elif args.d == 'bepridil':
+        concs = [30, 100, 300]
+    elif args.d == 'quinidine':
+        concs = [150, 500, 1500]
+    elif args.d == 'verapamil':
+        concs = [100, 300, 1000]
     colrs = [f'C{i}' for i in range(len(concs))]
     m_list = ast.literal_eval(args.m)
     main(m_list, args.p, args.t, args.b, args.e, args.o)

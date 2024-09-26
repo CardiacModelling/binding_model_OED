@@ -9,10 +9,10 @@ def generate_data(herg_model, drug_vals, prot, sd, max_time, bounds, m_sel, conc
     # get herg parameters
     if herg_model == '2019_37C':
         herg_vals = [2.07e-3, 7.17e-2, 3.44e-5, 6.18e-2, 4.18e-1, 2.58e-2, 4.75e-2, 2.51e-2, 33.3]
-    elif herg_model == 'kemp':
+    elif herg_model == 'kemp' or herg_model == '2024_Joey_sis_25C':
         herg_vals = []
 
-    if max_time != 15e3:
+    if max_time != 15e3 and herg_model != '2024_Joey_sis_25C':
         swps = 5
     else:
         swps = sweeps
@@ -50,12 +50,16 @@ def generate_data(herg_model, drug_vals, prot, sd, max_time, bounds, m_sel, conc
 
             # set hERG model parameters
             model.set_fix_parameters({p:v for p, v in zip(herg_pars, herg_vals)})
-        else:
+        elif herg_model == 'kemp':
             model = Model(f'kemp-m{m_sel}',
                             protocol,
                             parameters=['binding'],
                             analytical=True)
-
+        elif herg_model == '2024_Joey_sis_25C':
+            model = Model(f'sis-m{m_sel}',
+                            protocol,
+                            parameters=['binding'],
+                            analytical=True)
         # fix kt if necessary
         if m_sel in ['12', '13']:
             model.fix_kt()

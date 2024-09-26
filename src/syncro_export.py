@@ -30,8 +30,8 @@ cols_all = {'bepridil': [['04','05','06'],['07','08'],['09','10']],
 def get_snr(cc_well, swp):
     flat_section = cc_well[swp][2*14500:2*17500] - cc_well[20][2*14500:2*17500]
     noise = np.var(flat_section)
-    p1 = cc_well[swp][2*1350:2*4680] - cc_well[20][2*1350:2*4680]
-    p2 = cc_well[swp][2*8010:2*11350] - cc_well[20][2*8010:2*11350]
+    p1 = cc_well[swp][2*1350:2*4690] - cc_well[20][2*1350:2*4690]
+    p2 = cc_well[swp][2*8020:2*11350] - cc_well[20][2*8020:2*11350]
     p3 = cc_well[swp][2*17930:2*27930] - cc_well[20][2*17930:2*27930]
     signal = list(p1) + list(p2) + list(p3)
     return sum(sn < (0-noise/2) for sn in signal)
@@ -83,15 +83,17 @@ def main(output_folder, drug, concs, cols):
                                 wells_filt+=[well]
 
             fig,ax=plt.subplots(figsize = (10, 4))
-            pulse1 = [1350, 4680]
-            pulse2 = [8010, 11350]
+            pulse1 = [1350, 4690]
+            pulse2 = [8020, 11350]
             pulse3 = [17930, 27930]
             lc_fb_all = []
+            lc_fb_full_all = []
             controls_all = []
             j = 0
             for well in list(curr_conc.keys()):
                 if well not in wells_filt:
                     t_last = 0
+                    t_last_full = 0
                     j+=1
                     fb = curr_conc[well][20]
                     control1 = curr_conc[well][4][2*pulse1[0]:2*pulse1[1]] - fb[2*pulse1[0]:2*pulse1[1]]
@@ -99,19 +101,25 @@ def main(output_folder, drug, concs, cols):
                     control3 = curr_conc[well][4][2*pulse3[0]:2*pulse3[1]] - fb[2*pulse3[0]:2*pulse3[1]]
                     controls = []
                     lc_fbs = []
+                    lc_fb_full = []
                     timesall = []
+                    timesall_full = []
                     for i in np.arange(0, 10):
                         times1 = [t + t_last - ts[2*pulse1[0]] for t in ts[2*pulse1[0]:2*pulse1[1]]]
-                        times2 = [t + times1[-1] - ts[2*pulse2[0]] for t in ts[2*pulse2[0]:2*pulse2[1]]]
-                        times3 = [t + times2[-1] - ts[2*pulse3[0]] for t in ts[2*pulse3[0]:2*pulse3[1]]]
+                        times2 = [t + times1[-1] + 0.5 - ts[2*pulse2[0]] for t in ts[2*pulse2[0]:2*pulse2[1]]]
+                        times3 = [t + times2[-1] + 0.5 - ts[2*pulse3[0]] for t in ts[2*pulse3[0]:2*pulse3[1]]]
                         lc_fb_sweep1 = (curr_conc[well][i+6][2*pulse1[0]:2*pulse1[1]] - fb[2*pulse1[0]:2*pulse1[1]])/control1
                         lc_fb_sweep2 = (curr_conc[well][i+6][2*pulse2[0]:2*pulse2[1]] - fb[2*pulse2[0]:2*pulse2[1]])/control2
                         lc_fb_sweep3 = (curr_conc[well][i+6][2*pulse3[0]:2*pulse3[1]] - fb[2*pulse3[0]:2*pulse3[1]])/control3
                         lc_fbs += list(lc_fb_sweep1)+list(lc_fb_sweep2)+list(lc_fb_sweep3)
+                        lc_fb_full += list((curr_conc[well][i+6] - fb)/(curr_conc[well][4]-fb))
                         controls += list(control1)+list(control2)+list(control3)
                         timesall += times1+times2+times3
-                        t_last = times3[-1]
+                        timesall_full += [t + t_last_full for t in ts]
+                        t_last_full = timesall_full[-1] + 0.5
+                        t_last = times3[-1] + 0.5
                     lc_fb_all.append(lc_fbs)
+                    lc_fb_full_all.append(lc_fb_full)
                     controls_all.append(controls)
             ax.plot(timesall, np.average(lc_fb_all, axis=0))
             ax.set_ylabel('prop. open')
@@ -126,6 +134,12 @@ def main(output_folder, drug, concs, cols):
                 f.write("\n")
                 writer = csv.writer(f)
                 writer.writerows(zip(timesall, np.average(lc_fb_all, axis=0)))
+
+            with open(f"{output_folder}/fb_synthetic_conc_{conc}_full.csv", 'w') as f:
+                f.write('"time","current"')
+                f.write("\n")
+                writer = csv.writer(f)
+                writer.writerows(zip(timesall_full, np.average(lc_fb_full_all, axis=0)))
 
             # save control data for splinefitting
             dictY = {'t': timesall, 'x':  np.average(controls_all, axis=0)}
