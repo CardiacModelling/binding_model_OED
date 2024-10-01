@@ -39,9 +39,14 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
     else:
         swps = 10
 
-    swp_len=10e3
-    if herg == '2024_Joey_sis_25C':
+    if max_time == 15e3:
+        swp_len=10e3
+    elif herg == '2024_Joey_sis_25C':
         swp_len=[3340, 3330, 10e3]
+    else:
+        swp_len=[]
+        for b in bounds:
+            swp_len.append(b[1]-b[0])
 
     # define simulation time
     times = np.arange(0, max_time, steps)
@@ -75,19 +80,31 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
     for i in np.arange(0, swps):
         s_j = 0
         for b in bounds:
-            if herg != '2024_Joey_sis_25C':
+            if herg != '2024_Joey_sis_25C' and max_time != 15e3:
+                xticks.append(b[0] + swp_len[s_j]/2 + i*len(synth_Yfit)/(2*swps))
+                s_j+=1
+            elif herg != '2024_Joey_sis_25C':
                 xticks.append(b[0] + swp_len/2 + i*len(synth_Yfit)/(2*swps))
             else:
                 xticks.append(b[0] + swp_len[s_j]/2 + i*len(synth_Yfit)/(2*swps))
                 s_j+=1
-    if herg != '2024_Joey_sis_25C':
+    if max_time == 15e3:
         xlims=[(xval-swp_len/2, xval+swp_len/2) for xval in xticks]
-    else:
+    elif herg == '2024_Joey_sis_25C':
         xlims=[]
         for xval in xticks:
             s_j = 0
             xlims.append((xval-swp_len[s_j]/2, xval+swp_len[s_j]/2))
             if s_j < 2:
+                s_j+=1
+            else:
+                s_j=0
+    else:
+        xlims=[]
+        for xval in xticks:
+            s_j = 0
+            xlims.append((xval-swp_len[s_j]/2, xval+swp_len[s_j]/2))
+            if s_j < 1:
                 s_j+=1
             else:
                 s_j=0
@@ -140,7 +157,7 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
     plt.savefig(f"{output_folder}/model_fits.png", dpi=600, bbox_inches='tight')
 
     if args.c:
-        if herg != '2024_Joey_sis_25C':
+        if max_time == 15e3:
             # get fitted drug-binding parameters
             drug_fit_pars_non_opt = {}
             drug_fit_score_non_opt = []
@@ -195,7 +212,7 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
             ax.set_title('Optimised Protocol', fontsize=10)
             plt.savefig(f"{output_folder}/loglikelihoods.png", dpi=600, bbox_inches='tight')
 
-        if herg != '2024_Joey_sis_25C':
+        if max_time == 15e3:
             if model_nums == non_opt_model_nums:
                 fig,((ax1,ax2,ax3,ax4,ax5),(ax6,ax7,ax8,ax9,ax10),(ax11,ax12,ax13,ax14,ax15))= plt.subplots(3,5,figsize=(7,4))
                 for m, ax in zip(all_model_nums,[ax1,ax2,ax3,ax4,ax5,ax6,ax7,ax8,ax9,ax10,ax11,ax12,ax13,ax14,ax15]):

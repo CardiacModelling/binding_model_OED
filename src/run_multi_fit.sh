@@ -4,7 +4,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=500m
 #SBATCH --time=04:00:00
-#SBATCH --array=1-15
+#SBATCH --array=1-4
 
 module use $HOME/.local/easybuild/modules/all
 module load gcc-uoneasy/12.3.0

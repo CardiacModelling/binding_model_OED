@@ -24,11 +24,15 @@ models=("$@")
 
 # Read in protocol details
 filename=${dir}/prot_details.csv
-win_line=$(sed -n '1p' "$filename")
-IFS=',' read -r -a alt_win <<< "$win_line"
-ttime=$(sed -n '2p' "$filename")
-alt_win_str="[${alt_win[@]}]"
+win_list=$(sed -n '1p' "$filename")
+IFS=',' read -r -a win <<< "$win_list"
+win_list_alt=$(sed -n '2p' "$filename")
+IFS_alt=',' read -r -a win_alt <<< "$win_list_alt"
+ttime=$(sed -n '3p' "$filename")
+win_str="[${win[@]}]"
+win_str=$(echo $win_str | sed 's/ /,/g')
+alt_win_str="[${win_alt[@]}]"
 alt_win_str=$(echo $alt_win_str | sed 's/ /,/g')
-wins_str="[[1000,11000],$alt_win_str]"
+wins_str="[$win_str,$alt_win_str]"
 
 python -u src/fit_models.py -r ${repeats} -m ${models[SLURM_ARRAY_TASK_ID-1]} -p ${herg_pars} -v ${protocol} -o ${dir}/opt_synth_data -c ${compound} > ${dir}/opt_synth_data/fitting_output/model_${models[SLURM_ARRAY_TASK_ID-1]}_output.txt -t $ttime -b "$wins_str"

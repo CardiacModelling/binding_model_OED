@@ -8,23 +8,25 @@ import numpy as np
 from scipy.linalg import solve
 import skfda
 import argparse
+import ast
 
 parser = argparse.ArgumentParser(description='Spline fitting')
 parser.add_argument('-i', type=str, required=True, help='Input folder')
 parser.add_argument('-o', type=str, required=True, help='Output folder')
 parser.add_argument('-l', type=float, default=5, help='Smoothing parameter lambda')
+parser.add_argument('-s', type=str, default="[10000]", help="List of integers for the length of each voltage step e.g. '[1,2,3,4,5]'")
 parser.add_argument('-m', type=str, default='milnes', help='Milnes, opt, or real')
 args = parser.parse_args()
 
-def main(input, output, lambda_, data):
+def main(input, output, lambda_, t_steps, data):
     df_all = pd.read_csv(f"{input}/synth_Y.csv")
-
     # Parameters
     if data == 'milnes':
         t_swp = 10000
         swps = sweeps
     elif data == 'opt':
-        t_swp = 3340
+        j = 0
+        t_swp = t_steps[j]
         t_total = 0
         swps = sweeps*3
     else:
@@ -42,11 +44,12 @@ def main(input, output, lambda_, data):
         elif data == 'opt':
             df_rep = df_all[(df_all['t'] >= t_total) & (df_all['t'] < t_total + t_swp)][['t', 'x']]
             knots = np.arange(t_total, t_total + t_swp, t_swp/2)
+            if j == len(t_steps)-1:
+                j=0
+            else:
+                j+=1
             t_total += t_swp
-            if t_swp == 3340:
-                t_swp = 3330
-            elif (t_total % 10000 == 0):
-                t_swp = 3340
+            t_swp = t_steps[j]
         else:
             ind = int(i % 5)
             t_swp = lens[ind]
@@ -68,7 +71,11 @@ def main(input, output, lambda_, data):
         all_.extend(x_hat)
 
     # Save output
+    while len(all_) < len(df_all['t']):
+        last = all_[-1]
+        all_.append(last)
     pd.DataFrame(all_).to_csv(f"{output}/synth_Y_fit.csv", index=False)
 
 if __name__ == "__main__":
-    main(args.i, args.o, float(args.l), args.m)
+    t_steps = ast.literal_eval(args.s)
+    main(args.i, args.o, float(args.l), t_steps, args.m)

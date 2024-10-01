@@ -15,15 +15,15 @@ conda activate env
 # Define experiment
 compound=$1
 true_model=$2
-herg='kemp'
-models="['1','2','2i','3','4','5','5i','6','7','8','9','10','11','12','13']"
+herg='2019_37C'
+models="['7','10','11','13']"
 fit_reps=10
 
 # Convert models string for bash looping
 models_bash=(${models//[\[\]\'\,]/ })
 
 # Set output directory
-dir="outputs/${compound}/model_${true_model}_${compound}"
+dir="outputs_lowdim_stepvar/${compound}/model_${true_model}_${compound}"
 
 # Generate synthetic data
 echo "Generating synthetic data..."
@@ -55,11 +55,19 @@ python src/optimise_protocol.py -m ${models} -o ${dir} -e ${herg} -c ${compound}
 # Read in protocol details
 filename="${dir}/prot_details.csv"
 win_list=$(sed -n '1p' "$filename")
-IFS=',' read -r -a alt_win <<< "$win_list"
-ttime=$(sed -n '2p' "$filename")
-alt_win_str="[${alt_win[@]}]"
+IFS=',' read -r -a win <<< "$win_list"
+win_list_alt=$(sed -n '2p' "$filename")
+IFS_alt=',' read -r -a win_alt <<< "$win_list_alt"
+ttime=$(sed -n '3p' "$filename")
+t_list=$(sed -n '4p' "$filename")
+IFS_t_list=',' read -r -a t_list <<< "$t_list"
+win_str="[${win[@]}]"
+win_str=$(echo $win_str | sed 's/ /,/g')
+alt_win_str="[${win_alt[@]}]"
 alt_win_str=$(echo $alt_win_str | sed 's/ /,/g')
-wins_str="[[1000,11000],$alt_win_str]"
+t_list_str="[${t_list[@]}]"
+t_list_str=$(echo $t_list_str | sed 's/ /,/g')
+wins_str="[$win_str,$alt_win_str]"
 
 # Generate new synthetic data
 echo "Generating new synthetic data..."
@@ -67,7 +75,10 @@ python src/generate_synthetic_data.py -m ${true_model} -p "${dir}/opt_prot.mmt" 
 
 # Fit splines to new synthetic data control sweeps
 echo "Fitting splines..."
-python src/fit_spline.py -i "${dir}/opt_synth_data" -o "${dir}/opt_synth_data" -m "opt"
+python src/fit_spline.py -i "${dir}/opt_synth_data" -o "${dir}/opt_synth_data" -m "opt" -s "$t_list_str"
+
+models="['1','2','2i','3','4','5','5i','6','7','8','9','10','11','12','13']"
+models_bash=(${models//[\[\]\'\,]/ })
 
 # Fit models to synthetic data
 JOB_ID=$(sbatch src/run_multi_fit_opt.sh ${dir} ${compound} ${fit_reps} ${herg} "${models_bash[@]}" | awk '{print $4}')

@@ -41,9 +41,10 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
                 prot = funcs.create_protocol(self.v_st, self.t_st)
             if alt_protocol is not None:
                 model_out = funcs.model_outputs(model_pars, herg, prot, times = np.arange(0, np.sum(self.t_st), 10), concs = concs,
-                                          alt_protocol = prot_alt, alt_times = np.arange(0, np.sum(self.t_st_alt), 10))
+                                          alt_protocol = prot_alt, alt_times = np.arange(0, np.sum(self.t_st_alt), 10), wins = [1e3, np.sum(self.t_st[1:4])],
+                                          wins_alt = [1e3, np.sum(self.t_st_alt[1:4])])
             else:
-                model_out = funcs.model_outputs(model_pars, herg, prot, times = np.arange(0, np.sum(self.t_st), 10), concs = concs)
+                model_out = funcs.model_outputs(model_pars, herg, prot, times = np.arange(0, np.sum(self.t_st), 10), concs = concs, wins = [1e3, np.sum(self.t_st[1:4])])
             ### loop through models and concentrations to get traces
             all_traces = []
             for m in model_out:
@@ -60,15 +61,18 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
 
     lower_v = [-50]*v_steps.count(np.nan)
     upper_v = [40]*v_steps.count(np.nan)
-    lower_t = [50]*t_steps.count(np.nan)
-    upper_t = [20000]*t_steps.count(np.nan)
+    lower_t_p = [1000]*(t_steps.count(np.nan)-1)
+    upper_t_p = [5000]*(t_steps.count(np.nan)-1)
+    lower_t_i = [50]
+    upper_t_i = [20000]
     step_v = [5]*v_steps.count(np.nan)
     step_t = [50]*t_steps.count(np.nan)
 
     if alt_protocol is not None:
-        boundaries = pints.RectangularBoundaries(lower_v + lower_t + lower_v + lower_t, upper_v + upper_t + upper_v + upper_t)
+        boundaries = pints.RectangularBoundaries(lower_v + lower_t_p + lower_t_i + lower_v + lower_t_p + lower_t_i,
+                                                 upper_v + upper_t_p + upper_t_i + upper_v + upper_t_p + upper_t_i)
     else:
-        boundaries = pints.RectangularBoundaries(lower_v + lower_t, upper_v + upper_t)
+        boundaries = pints.RectangularBoundaries(lower_v + lower_t_p + lower_t_i, upper_v + upper_t_p + upper_t_i)
     transformation = pints.RectangularBoundariesTransformation(boundaries)
 
     if alt_protocol is not None:
@@ -125,9 +129,9 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
 
 def main(model_nums, max_time, bounds, herg, output_folder):
     v_steps = [-80, np.nan, np.nan, np.nan, -80]
-    t_steps = [1000, 3340, 3330, 3330, np.nan]
-    p0_1 = [0, 0, 0, 14000]
-    p0_2 = [0, 0, 0, 14000]
+    t_steps = [1000, np.nan, np.nan, np.nan, np.nan]
+    p0_1 = [0, 0, 0, 3340, 3330, 3330, 14000]
+    p0_2 = [0, 0, 0, 3340, 3330, 3330, 14000]
 
     # define simulation time
     times = np.arange(0, max_time, steps)
@@ -149,27 +153,31 @@ def main(model_nums, max_time, bounds, herg, output_folder):
         drug_fit_pars[m] = parlist
 
     # perform optimisation
-    p_out, cost = get_opt_prot(drug_fit_pars, herg, v_steps, t_steps, p0_1, CMAES_pop = 7, max_iter = 120, alt_protocol = p0_2)
+    p_out, cost = get_opt_prot(drug_fit_pars, herg, v_steps, t_steps, p0_1, CMAES_pop = 7, max_iter = 240, alt_protocol = p0_2)
     print(f'Final objective cost: {cost}')
     print(f'Final optimised params: {p_out}')
 
     # generate and save optimised protocol
     vsteps_all = [-80, np.nan, np.nan, np.nan, -80, -80, np.nan, np.nan, np.nan, -80]
-    tsteps_all = [1000, 3340, 3330, 3330, np.nan, 1000, 3340, 3330, 3330, np.nan]
-    p_ordered = list(p_out[:3]) + list(p_out[4:7]) + list([p_out[3]]) + list([p_out[7]])
+    tsteps_all = [1000, np.nan, np.nan, np.nan, np.nan, 1000, np.nan, np.nan, np.nan, np.nan]
+    p_ordered = list(p_out[:3]) + list(p_out[7:10]) + list(p_out[3:7]) + list(p_out[10:])
     vst,tst = funcs.get_steps(vsteps_all, tsteps_all, p_ordered)
     prot_full = funcs.create_protocol(vst, tst)
     myokit.save(filename = f'{output_folder}/opt_prot.mmt', protocol = prot_full)
 
     # save length and alternate window
     full_dur = sum(tst)
+    win = [1000, sum(tst[:4])]
     alt_win = [sum(tst[:6]), sum(tst[:-1])]
+    t_steps = [tst[1], tst[2], tst[3], tst[6], tst[7], tst[8]]
 
     # write to CSV
     with open(f'{output_folder}/prot_details.csv', mode='w', newline='') as file:
         writer = csv.writer(file)
+        writer.writerow(win)
         writer.writerow(alt_win)
         writer.writerow([full_dur])
+        writer.writerow(t_steps)
 
 if __name__ == "__main__":
     concs = parameters.drug_concs[args.c]

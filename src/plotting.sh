@@ -2,7 +2,7 @@
 #SBATCH --partition=defq
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem=38g
+#SBATCH --mem=40g
 #SBATCH --time=00:15:00
 
 module use $HOME/.local/easybuild/modules/all
@@ -19,7 +19,7 @@ herg='2019_37C'
 models="['7','10','11','13']"
 
 # Set output directory
-dir="outputs_lowdim/${compound}/model_${true_model}_${compound}"
+dir="outputs_lowdim_stepvar/${compound}/model_${true_model}_${compound}"
 
 # Plot fitting results
 python src/post_fit_plot.py -m ${models} -p 'protocols/Milnes_Phil_Trans.mmt' -o ${dir} -e ${herg} -d ${compound}
@@ -27,11 +27,15 @@ python src/post_fit_plot.py -m ${models} -p 'protocols/Milnes_Phil_Trans.mmt' -o
 # Read in protocol details
 filename="${dir}/prot_details.csv"
 win_list=$(sed -n '1p' "$filename")
-IFS=',' read -r -a alt_win <<< "$win_list"
-ttime=$(sed -n '2p' "$filename")
-alt_win_str="[${alt_win[@]}]"
+IFS=',' read -r -a win <<< "$win_list"
+win_list_alt=$(sed -n '2p' "$filename")
+IFS_alt=',' read -r -a win_alt <<< "$win_list_alt"
+ttime=$(sed -n '3p' "$filename")
+win_str="[${win[@]}]"
+win_str=$(echo $win_str | sed 's/ /,/g')
+alt_win_str="[${win_alt[@]}]"
 alt_win_str=$(echo $alt_win_str | sed 's/ /,/g')
-wins_str="[[1000,11000],$alt_win_str]"
+wins_str="[$win_str,$alt_win_str]"
 
 models="['1','2','2i','3','4','5','5i','6','7','8','9','10','11','12','13']"
 

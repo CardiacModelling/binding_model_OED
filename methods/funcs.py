@@ -140,7 +140,7 @@ def create_protocol(v_steps, t_steps):
     return prot
 
 ### Function for getting model outputs
-def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = None, alt_times = None, wins = [1e3, 11e3]):
+def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = None, alt_times = None, wins = [1e3, 11e3], wins_alt = [1e3, 11e3]):
     # get herg parameters
     if herg_model == '2019_37C':
         herg_vals = [2.07e-3, 7.17e-2, 3.44e-5, 6.18e-2, 4.18e-1, 2.58e-2, 4.75e-2, 2.51e-2, 33.3]
@@ -150,7 +150,7 @@ def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = Non
     swps = 5 #when generating optimal protocol, we use 5 sweeps
     win = (times >= wins[0]) & (times < wins[1])
     if alt_protocol is not None:
-        win_alt = (alt_times >= wins[0]) & (alt_times < wins[1])
+        win_alt = (alt_times >= wins_alt[0]) & (alt_times < wins_alt[1])
     for m in model_pars:
         binding_params = model_pars[m]
         model_out[m] = {}
