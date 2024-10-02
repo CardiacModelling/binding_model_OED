@@ -13,7 +13,7 @@ ikr.OD = 0
 [ikr]
 use physical_constants.R, physical_constants.T, physical_constants.F
 IKr = gkr * O * (membrane.V - nernst.EK)
-    in [nA]
+    in [pA]
     oxmeta: membrane_rapid_delayed_rectifier_potassium_current
 
 a_a0 = a_12 * exp(z_12 * membrane.V / (R*T/F))
@@ -49,8 +49,8 @@ z_O3 = 1.062
 z_IO = 0.8209
 z_I3 = 1.842
 
-gkr = 33.3 [uS]
-    in [uS]
+gkr = 33.3 [nS]
+    in [nS]
     oxmeta: membrane_rapid_delayed_rectifier_potassium_current_conductance
 
 dot(C1) = -a_a0 * C1 + b_a0 * C2
