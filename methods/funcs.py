@@ -172,19 +172,28 @@ def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = Non
                 model.fix_kt()
             try:
                 model_milnes = []
+                control = []
+                model.set_dose(0)
+                before = model.simulate(binding_params, times)[win]
+                before_alt = model.simulate(binding_params, alt_times)[win_alt]
                 model.set_dose(conc)
                 after = model.simulate(binding_params, times)[win]
-                model_milnes = np.append(model_milnes, after)
+                model_milnes = np.append(model_milnes, after/before)
+                control = np.append(control, before)
                 for i in range(swps-1):
                     if (alt_protocol is not None) & ((i % 2) == 0):
                         model.change_protocol(alt_protocol)
                         after = model.simulate(binding_params, alt_times, reset=False)[win_alt]
-                        model_milnes = np.append(model_milnes, after)
+                        model_milnes = np.append(model_milnes, after/before_alt)
+                        control	= np.append(control, before_alt)
                         model.change_protocol(prot)
                     else:
                         after = model.simulate(binding_params, times, reset=False)[win]
-                        model_milnes = np.append(model_milnes, after)
+                        model_milnes = np.append(model_milnes, after/before)
+                        control = np.append(control, before)
                 model_out[m][conc] = model_milnes
+                save_control = control
             except:
                 model_out[m][conc] = np.ones(times.shape) * float('inf')
-    return model_out
+                save_control = np.ones(times.shape) * float('inf')
+    return model_out, save_control

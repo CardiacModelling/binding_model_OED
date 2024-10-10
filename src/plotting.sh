@@ -2,8 +2,8 @@
 #SBATCH --partition=defq
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem=40g
-#SBATCH --time=00:15:00
+#SBATCH --mem=42g
+#SBATCH --time=00:05:00
 
 module use $HOME/.local/easybuild/modules/all
 module load gcc-uoneasy/12.3.0
@@ -19,7 +19,7 @@ herg='2019_37C'
 models="['7','10','11','13']"
 
 # Set output directory
-dir="outputs_lowdim_stepvar/${compound}/model_${true_model}_${compound}"
+dir="outputs_lowdim_stepvar_new_prot_obj/${compound}/model_${true_model}_${compound}"
 
 # Plot fitting results
 python src/post_fit_plot.py -m ${models} -p 'protocols/Milnes_Phil_Trans.mmt' -o ${dir} -e ${herg} -d ${compound}

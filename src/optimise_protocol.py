@@ -3,7 +3,7 @@ import os
 import sys
 top_level_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, top_level_dir)
-from methods import steps
+from methods import steps, sd
 import methods.funcs as funcs
 import methods.parameters as parameters
 import pints
@@ -13,6 +13,7 @@ import argparse
 import ast
 import myokit
 import csv
+from scipy import special
 
 parser = argparse.ArgumentParser(description='Plot fits and log-likelihoods')
 parser.add_argument('-m', type=str, required=True, help='Model numbers')
@@ -40,11 +41,11 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
                 self.v_st, self.t_st = funcs.get_steps(v_steps, t_steps, self.pars)
                 prot = funcs.create_protocol(self.v_st, self.t_st)
             if alt_protocol is not None:
-                model_out = funcs.model_outputs(model_pars, herg, prot, times = np.arange(0, np.sum(self.t_st), 10), concs = concs,
+                model_out, cont = funcs.model_outputs(model_pars, herg, prot, times = np.arange(0, np.sum(self.t_st), 10), concs = concs,
                                           alt_protocol = prot_alt, alt_times = np.arange(0, np.sum(self.t_st_alt), 10), wins = [1e3, np.sum(self.t_st[1:4])],
                                           wins_alt = [1e3, np.sum(self.t_st_alt[1:4])])
             else:
-                model_out = funcs.model_outputs(model_pars, herg, prot, times = np.arange(0, np.sum(self.t_st), 10), concs = concs, wins = [1e3, np.sum(self.t_st[1:4])])
+                model_out, cont = funcs.model_outputs(model_pars, herg, prot, times = np.arange(0, np.sum(self.t_st), 10), concs = concs, wins = [1e3, np.sum(self.t_st[1:4])])
             ### loop through models and concentrations to get traces
             all_traces = []
             for m in model_out:
@@ -52,8 +53,19 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
                 for c in concs:
                     model_trace = np.append(model_trace, model_out[m][c])
                 all_traces.append(model_trace)
-            ssq = [sum((m-n)**2) for i,m in enumerate(all_traces) for j,n in enumerate(all_traces) if i < j]
-            out = -np.median(ssq)
+            conts = []
+            for c in concs:
+                conts = np.append(conts, cont)
+            #ssq = [sum((m-n)**2) for i,m in enumerate(all_traces) for j,n in enumerate(all_traces) if i < j]
+            lhoods = []
+            for i,m in enumerate(all_traces):
+                for j,n in enumerate(all_traces):
+                    if i < j:
+                        top = np.exp(-conts**2*((m**2+1)/(2*sd**2))) + np.sqrt(np.pi/2)*(conts/sd)*np.sqrt(1+m**2)*special.erf((conts/(np.sqrt(2)*sd))*np.sqrt(1+m**2))
+                        bottom = np.exp(-conts**2*((n**2+1)/(2*sd**2))) + np.sqrt(np.pi/2)*(conts/sd)*((1+m*n)/np.sqrt(1+m**2))*special.erf((conts*(1+m*n))/(np.sqrt(2)*sd*np.sqrt(1+m**2)))*np.exp(-(conts**2*(m-n)**2)/(2*sd**2*(1+m**2)))
+                        lhoods.append(-2*np.sum(np.log(top/bottom)))
+            #out = -np.median(ssq)
+            out = np.median(lhoods)
             return out
 
         def n_parameters(self):
