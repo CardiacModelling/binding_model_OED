@@ -71,9 +71,9 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
         def n_parameters(self):
             return len(self.pars)
 
-    lower_v = [-50]*v_steps.count(np.nan)
-    upper_v = [40]*v_steps.count(np.nan)
-    lower_t_p = [1000]*(t_steps.count(np.nan)-1)
+    lower_v = [-60]*v_steps.count(np.nan)
+    upper_v = [50]*v_steps.count(np.nan)
+    lower_t_p = [20]*(t_steps.count(np.nan)-1)
     upper_t_p = [5000]*(t_steps.count(np.nan)-1)
     lower_t_i = [50]
     upper_t_i = [20000]
@@ -126,7 +126,7 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
 
     opt.optimiser().set_population_size(CMAES_pop)
     opt.set_max_iterations(max_iter)
-    opt.set_max_unchanged_iterations(iterations=20, threshold=1e-2)
+    opt.set_max_unchanged_iterations(iterations=100, threshold=1e-2)
     opt.set_parallel(-1)
 
     try:
@@ -165,7 +165,7 @@ def main(model_nums, max_time, bounds, herg, output_folder):
         drug_fit_pars[m] = parlist
 
     # perform optimisation
-    p_out, cost = get_opt_prot(drug_fit_pars, herg, v_steps, t_steps, p0_1, CMAES_pop = 7, max_iter = 240, alt_protocol = p0_2)
+    p_out, cost = get_opt_prot(drug_fit_pars, herg, v_steps, t_steps, p0_1, CMAES_pop = 7, max_iter = 750, alt_protocol = p0_2)
     print(f'Final objective cost: {cost}')
     print(f'Final optimised params: {p_out}')
 
