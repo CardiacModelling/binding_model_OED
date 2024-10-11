@@ -41,11 +41,11 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
                 self.v_st, self.t_st = funcs.get_steps(v_steps, t_steps, self.pars)
                 prot = funcs.create_protocol(self.v_st, self.t_st)
             if alt_protocol is not None:
-                model_out, cont = funcs.model_outputs(model_pars, herg, prot, times = np.arange(0, np.sum(self.t_st), 10), concs = concs,
+                model_out, cont, swps = funcs.model_outputs(model_pars, herg, prot, times = np.arange(0, np.sum(self.t_st), 10), concs = concs,
                                           alt_protocol = prot_alt, alt_times = np.arange(0, np.sum(self.t_st_alt), 10), wins = [1e3, np.sum(self.t_st[1:4])],
                                           wins_alt = [1e3, np.sum(self.t_st_alt[1:4])])
             else:
-                model_out, cont = funcs.model_outputs(model_pars, herg, prot, times = np.arange(0, np.sum(self.t_st), 10), concs = concs, wins = [1e3, np.sum(self.t_st[1:4])])
+                model_out, cont, swps = funcs.model_outputs(model_pars, herg, prot, times = np.arange(0, np.sum(self.t_st), 10), concs = concs, wins = [1e3, np.sum(self.t_st[1:4])])
             ### loop through models and concentrations to get traces
             all_traces = []
             for m in model_out:
@@ -66,6 +66,7 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
                         lhoods.append(-2*np.sum(np.log(top/bottom)))
             #out = -np.median(ssq)
             out = np.median(lhoods)
+            print(swps)
             return out
 
         def n_parameters(self):
@@ -126,7 +127,7 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
 
     opt.optimiser().set_population_size(CMAES_pop)
     opt.set_max_iterations(max_iter)
-    opt.set_max_unchanged_iterations(iterations=100, threshold=1e-2)
+    opt.set_max_unchanged_iterations(iterations=50, threshold=1)
     opt.set_parallel(-1)
 
     try:
@@ -165,7 +166,7 @@ def main(model_nums, max_time, bounds, herg, output_folder):
         drug_fit_pars[m] = parlist
 
     # perform optimisation
-    p_out, cost = get_opt_prot(drug_fit_pars, herg, v_steps, t_steps, p0_1, CMAES_pop = 7, max_iter = 750, alt_protocol = p0_2)
+    p_out, cost = get_opt_prot(drug_fit_pars, herg, v_steps, t_steps, p0_1, CMAES_pop = 7, max_iter = 500, alt_protocol = p0_2)
     print(f'Final objective cost: {cost}')
     print(f'Final optimised params: {p_out}')
 

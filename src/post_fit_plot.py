@@ -35,7 +35,7 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
     if max_time == 15e3 and herg != '2024_Joey_sis_25C':
         swps = sweeps
     elif herg != '2024_Joey_sis_25C':
-        swps = 5
+        swps = int(np.floor(250000/max_time))
     else:
         swps = 10
 

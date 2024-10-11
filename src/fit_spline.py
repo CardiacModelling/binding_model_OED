@@ -16,9 +16,10 @@ parser.add_argument('-o', type=str, required=True, help='Output folder')
 parser.add_argument('-l', type=float, default=5, help='Smoothing parameter lambda')
 parser.add_argument('-s', type=str, default="[10000]", help="List of integers for the length of each voltage step e.g. '[1,2,3,4,5]'")
 parser.add_argument('-m', type=str, default='milnes', help='Milnes, opt, or real')
+parser.add_argument('-t', type=float, default=15e3, help='Max time')
 args = parser.parse_args()
 
-def main(input, output, lambda_, t_steps, data):
+def main(input, output, lambda_, t_steps, data, max_t):
     df_all = pd.read_csv(f"{input}/synth_Y.csv")
     # Parameters
     if data == 'milnes':
@@ -28,7 +29,7 @@ def main(input, output, lambda_, t_steps, data):
         j = 0
         t_swp = t_steps[j]
         t_total = 0
-        swps = sweeps*3
+        swps = int(np.floor(250000/max_t))*6
     else:
         lens = [3340, 3330, 3340, 3330, 3330]
         t_total = 0
@@ -78,4 +79,4 @@ def main(input, output, lambda_, t_steps, data):
 
 if __name__ == "__main__":
     t_steps = ast.literal_eval(args.s)
-    main(args.i, args.o, float(args.l), t_steps, args.m)
+    main(args.i, args.o, float(args.l), t_steps, args.m, args.t)

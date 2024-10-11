@@ -13,7 +13,7 @@ def generate_data(herg_model, drug_vals, prot, sd, max_time, bounds, m_sel, conc
         herg_vals = []
 
     if max_time != 15e3 and herg_model != '2024_Joey_sis_25C':
-        swps = 5
+        swps = int(np.floor(250000/max_time))
     else:
         swps = sweeps
 
@@ -147,7 +147,7 @@ def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = Non
     elif herg_model == 'kemp':
         herg_vals = []
     model_out = {}
-    swps = 5 #when generating optimal protocol, we use 5 sweeps
+    swps = int(np.floor(250000/(times[-1]+alt_times[-1])))
     win = (times >= wins[0]) & (times < wins[1])
     if alt_protocol is not None:
         win_alt = (alt_times >= wins_alt[0]) & (alt_times < wins_alt[1])
@@ -180,7 +180,7 @@ def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = Non
                 after = model.simulate(binding_params, times)[win]
                 model_milnes = np.append(model_milnes, after/before)
                 control = np.append(control, before)
-                for i in range(swps-1):
+                for i in range(swps*2-1):
                     if (alt_protocol is not None) & ((i % 2) == 0):
                         model.change_protocol(alt_protocol)
                         after = model.simulate(binding_params, alt_times, reset=False)[win_alt]
@@ -196,4 +196,4 @@ def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = Non
             except:
                 model_out[m][conc] = np.ones(times.shape) * float('inf')
                 save_control = np.ones(times.shape) * float('inf')
-    return model_out, save_control
+    return model_out, save_control, swps
