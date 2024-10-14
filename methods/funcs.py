@@ -12,10 +12,12 @@ def generate_data(herg_model, drug_vals, prot, sd, max_time, bounds, m_sel, conc
     elif herg_model == 'kemp' or herg_model == '2024_Joey_sis_25C':
         herg_vals = []
 
+    print(max_time)
     if max_time != 15e3 and herg_model != '2024_Joey_sis_25C':
         swps = int(np.floor(250000/max_time))
     else:
         swps = sweeps
+    print(swps)
 
     # define protocol
     protocol = myokit.load_protocol(prot)

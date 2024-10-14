@@ -66,7 +66,6 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
                         lhoods.append(-2*np.sum(np.log(top/bottom)))
             #out = -np.median(ssq)
             out = np.median(lhoods)
-            print(swps)
             return out
 
         def n_parameters(self):
