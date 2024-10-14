@@ -7,9 +7,11 @@ import pandas as pd
 import numpy as np
 import matplotlib.patches as patches
 
+# select drug and model numbers for plotting
 drug='chlorpromazine'
 model_nums = ['1','2','2i','3','4','5','5i','6','7','8','9','10','11','12','13']
 
+# get log-likelihoods for milnes data fits
 length=20000
 grid1 = []
 grid1_lu = []
@@ -27,6 +29,7 @@ for m in model_nums:
     grid1.append(drug_fit_score)
     grid1_lu.append(drug_fit_score_lu)
 
+# get log-likelihoods for optimised protocol data fits
 length=40000
 grid2 = []
 grid2_lu = []
@@ -51,6 +54,7 @@ data_array4 = np.array(grid2_lu)
 
 import matplotlib.gridspec as gridspec
 
+# plotting
 fig = plt.figure(figsize=(7, 6))
 gs = gridspec.GridSpec(2, 2, hspace=0.4, wspace = 0.2)
 ax1 = plt.subplot(gs[0, 0])
@@ -89,57 +93,27 @@ cb2.ax.tick_params(labelsize=10)
 cb3.ax.tick_params(labelsize=10)
 cb4.ax.tick_params(labelsize=10)
 
-# Find and outline the highest value in each row
-for i, row in enumerate(data_array1):
-    max_value = np.max(row)
-    threshold1 = max_value - 10**4
-    threshold2 = max_value - 10**5
-    for j, value in enumerate(row):
-        if value >= threshold1:
-            rect = patches.Rectangle((j - 0.4, i - 0.4), 0.8, 0.8, linewidth=1.5, edgecolor='green', facecolor='none')
-            ax1.add_patch(rect)
-        elif value >= threshold2:
-            rect = patches.Rectangle((j - 0.4, i - 0.4), 0.8, 0.8, linewidth=1.5, edgecolor='red', facecolor='none')
-            ax1.add_patch(rect)
+def f_outline(d_array, ax):
+    '''
+    finds the highest value in each row and outlines those 
+    within a threshold below this highest value
+    '''
+    for i, row in enumerate(d_array):
+        max_value = np.max(row)
+        threshold1 = max_value - 10**4
+        threshold2 = max_value - 10**5
+        for j, value in enumerate(row):
+            if value >= threshold1:
+                rect = patches.Rectangle((j - 0.4, i - 0.4), 0.8, 0.8, linewidth=1.5, edgecolor='green', facecolor='none')
+                ax.add_patch(rect)
+            elif value >= threshold2:
+                rect = patches.Rectangle((j - 0.4, i - 0.4), 0.8, 0.8, linewidth=1.5, edgecolor='red', facecolor='none')
+                ax.add_patch(rect)
 
-# Find and outline the highest value in each row
-for i, row in enumerate(data_array2):
-    max_value = np.max(row)
-    threshold1 = max_value - 10**4
-    threshold2 = max_value - 10**5
-    for j, value in enumerate(row):
-        if value >= threshold1:
-            rect = patches.Rectangle((j - 0.4, i - 0.4), 0.8, 0.8, linewidth=1.5, edgecolor='green', facecolor='none')
-            ax2.add_patch(rect)
-        elif value >= threshold2:
-            rect = patches.Rectangle((j - 0.4, i - 0.4), 0.8, 0.8, linewidth=1.5, edgecolor='red', facecolor='none')
-            ax2.add_patch(rect)
-
-# Find and outline the highest value in each row
-for i, row in enumerate(data_array3):
-    max_value = np.max(row)
-    threshold1 = max_value - 10**4
-    threshold2 = max_value - 10**5
-    for j, value in enumerate(row):
-        if value >= threshold1:
-            rect = patches.Rectangle((j - 0.4, i - 0.4), 0.8, 0.8, linewidth=1.5, edgecolor='green', facecolor='none')
-            ax3.add_patch(rect)
-        elif value >= threshold2:
-            rect = patches.Rectangle((j - 0.4, i - 0.4), 0.8, 0.8, linewidth=1.5, edgecolor='red', facecolor='none')
-            ax3.add_patch(rect)
-
-# Find and outline the highest value in each row
-for i, row in enumerate(data_array4):
-    max_value = np.max(row)
-    threshold1 = max_value - 10**4
-    threshold2 = max_value - 10**5
-    for j, value in enumerate(row):
-        if value >= threshold1:
-            rect = patches.Rectangle((j - 0.4, i - 0.4), 0.8, 0.8, linewidth=1.5, edgecolor='green', facecolor='none')
-            ax4.add_patch(rect)
-        elif value >= threshold2:
-            rect = patches.Rectangle((j - 0.4, i - 0.4), 0.8, 0.8, linewidth=1.5, edgecolor='red', facecolor='none')
-            ax4.add_patch(rect)
+f_outline(data_array1, ax1)
+f_outline(data_array2, ax2)
+f_outline(data_array2, ax3)
+f_outline(data_array2, ax4)
 
 for i in np.arange(0, len(model_nums)):
     ax1.scatter(i,i,marker='.',color='k',s=10)

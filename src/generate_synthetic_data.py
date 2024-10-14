@@ -33,6 +33,9 @@ parser.add_argument('-c', type=str, required=True, help='drug compound string')
 args = parser.parse_args()
 
 def plot_fig(X, Y, Z, prot, bounds, output_folder):
+    '''
+    plots data
+    '''
     fig = plt.figure(figsize=(7, 2.25))
     if args.t == 15e3:
         swps = sweeps
@@ -151,8 +154,10 @@ def plot_fig(X, Y, Z, prot, bounds, output_folder):
     plt.savefig(f'{output_folder}/synth_data.png', dpi=1200, bbox_inches='tight')
 
 def main(m_sel, prot, max_time, bounds, herg, output_folder):
-    synth_X, synth_Y, synth_Z, synth_X_win, synth_Y_win, synth_Z_win, ts, ts_win = funcs.generate_data(
+    # generate data
+    synth_X, synth_Y, synth_Z, _, synth_Y_win, synth_Z_win, ts, ts_win = funcs.generate_data(
                                                             herg, drug_vals, prot, sd, max_time, bounds, m_sel, concs)
+    # save data
     for conc in concs:
         with open(f"{output_folder}/fb_synthetic_conc_{conc}.csv", 'w') as f:
             f.write('"time","current"')

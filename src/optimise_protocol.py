@@ -27,11 +27,18 @@ args = parser.parse_args()
 def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_iter = 5, alt_protocol = None):
 
     class DrugBind(object):
+        '''
+        For some input parameter set p (defining voltages and times), this class creates a protocol, 
+        generates synthetic open proportion data under that protocol, and then calculates the (normal ratio) 
+        likelihood ratio between a set of models. It then takes the median of these and uses this as the objective 
+        for optimising the protocol.
+        '''
         def __init__(self, p):
             self.pars = p
 
         def __call__(self, p):
             self.pars = p
+            # create protocol based on p
             if alt_protocol is not None:
                 self.v_st, self.t_st = funcs.get_steps(v_steps, t_steps, self.pars[:len(self.pars)//2])
                 self.v_st_alt, self.t_st_alt = funcs.get_steps(v_steps, t_steps, self.pars[len(self.pars)//2:])
@@ -40,6 +47,7 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
             else:
                 self.v_st, self.t_st = funcs.get_steps(v_steps, t_steps, self.pars)
                 prot = funcs.create_protocol(self.v_st, self.t_st)
+            # generate model output under the new protocol
             if alt_protocol is not None:
                 model_out, cont, swps = funcs.model_outputs(model_pars, herg, prot, times = np.arange(0, np.sum(self.t_st), 10), concs = concs,
                                           alt_protocol = prot_alt, alt_times = np.arange(0, np.sum(self.t_st_alt), 10), wins = [1e3, np.sum(self.t_st[1:4])],
@@ -57,6 +65,7 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
             for c in concs:
                 conts = np.append(conts, cont)
             #ssq = [sum((m-n)**2) for i,m in enumerate(all_traces) for j,n in enumerate(all_traces) if i < j]
+            # calculate expected likelihood ratio (assuming normal ratio data)
             lhoods = []
             for i,m in enumerate(all_traces):
                 for j,n in enumerate(all_traces):
@@ -71,14 +80,16 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
         def n_parameters(self):
             return len(self.pars)
 
+    # define bounds for protocol parameters
+    # voltage bounds (mV):
     lower_v = [-60]*v_steps.count(np.nan)
     upper_v = [50]*v_steps.count(np.nan)
+    # voltage step length bounds (ms):
     lower_t_p = [20]*(t_steps.count(np.nan)-1)
     upper_t_p = [5000]*(t_steps.count(np.nan)-1)
+    # interpulse interval length bounds (ms):
     lower_t_i = [50]
     upper_t_i = [20000]
-    step_v = [5]*v_steps.count(np.nan)
-    step_t = [50]*t_steps.count(np.nan)
 
     if alt_protocol is not None:
         boundaries = pints.RectangularBoundaries(lower_v + lower_t_p + lower_t_i + lower_v + lower_t_p + lower_t_i,
@@ -87,15 +98,21 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
         boundaries = pints.RectangularBoundaries(lower_v + lower_t_p + lower_t_i, upper_v + upper_t_p + upper_t_i)
     transformation = pints.RectangularBoundariesTransformation(boundaries)
 
+    # define initial standard deviation around voltages and times during optimisation
+    step_v = [5]*v_steps.count(np.nan)
+    step_t = [50]*t_steps.count(np.nan)
+
     if alt_protocol is not None:
         design = DrugBind(p0+alt_protocol)
     else:
         design = DrugBind(p0)
-    score = 1e15
-
+    
     # Fix random seed for reproducibility
     np.random.seed(101)
 
+    # Loop through 100 boundary samples and select the best 
+    # to use as intialisation
+    score = 1e15
     for i in range(0,100):
         q0 = boundaries.sample()[0]
         try:
@@ -106,6 +123,7 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
         except Exception as e:
             print(f"An error occurred: {e}")
 
+    # Define optimiser
     optimiser = pints.CMAES
     if alt_protocol is not None:
         design = DrugBind(p0+alt_protocol)
@@ -123,12 +141,12 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
             sigma0=step_v+step_t,
             transformation=transformation,
             method=optimiser)
-
     opt.optimiser().set_population_size(CMAES_pop)
     opt.set_max_iterations(max_iter)
     opt.set_max_unchanged_iterations(iterations=50, threshold=1)
     opt.set_parallel(-1)
 
+    # Run optimisation
     try:
         # Tell numpy not to issue warnings
         with np.errstate(all='ignore'):
@@ -140,6 +158,7 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
         raise RuntimeError('Not here...')
 
 def main(model_nums, max_time, bounds, herg, output_folder):
+    # initialisation protocol parameters
     v_steps = [-80, np.nan, np.nan, np.nan, -80]
     t_steps = [1000, np.nan, np.nan, np.nan, np.nan]
     p0_1 = [0, 0, 0, 3340, 3330, 3330, 14000]

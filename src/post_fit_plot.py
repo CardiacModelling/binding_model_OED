@@ -32,6 +32,7 @@ parser.add_argument('-d', type=str, help='drug compound')
 args = parser.parse_args()
 
 def main(model_nums, prot, max_time, bounds, herg, output_folder):
+    # TODO hardcoded to determine no. of sweeps
     if max_time == 15e3 and herg != '2024_Joey_sis_25C':
         swps = sweeps
     elif herg != '2024_Joey_sis_25C':
@@ -39,6 +40,7 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
     else:
         swps = 10
 
+    # TODO hardcoded to determine sweep length
     if max_time == 15e3:
         swp_len=10e3
     elif herg == '2024_Joey_sis_25C':
@@ -69,6 +71,7 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
         drug_fit_pars[m] = parlist
         drug_fit_score.append(max(df['score']))
 
+    # get model output for fitted parameters
     synth_Zfit_all = {}
     for m in all_model_nums:
         if m in model_nums:
@@ -76,6 +79,7 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
             _, synth_Yfit, synth_Zfit, _, _, _, ts, _ = funcs.generate_data(herg, drug_vals, prot, 0, max_time, bounds, m, concs)
             synth_Zfit_all[m] = synth_Zfit
 
+    # get xticks and xlims
     xticks = []
     for i in np.arange(0, swps):
         s_j = 0
@@ -109,7 +113,7 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
             else:
                 s_j=0
 
-    # Create a 5x3 grid of subplots
+    # Create a 5x3 grid of subplots of model fits
     fig = plt.figure(figsize=(7, 7))
     outer = gridspec.GridSpec(5, 3, wspace=0.15, hspace=0.45)
     for j, m in enumerate(all_model_nums):
@@ -173,6 +177,7 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
                     non_opt_model_nums.append(m)
                 except:
                     print(f"Model {m} was not fitted in the non-optimal case")
+            # plot log-likelihoods
             fig = plt.figure(figsize=(7, 2))
             gs = gridspec.GridSpec(1, 2, wspace = 0.045)
             ax1 = plt.subplot(gs[0, 0])
@@ -199,6 +204,7 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
             ax2.set_title('Optimised Protocol', fontsize=10)
             plt.savefig(f"{output_folder}/loglikelihoods.png", dpi=600, bbox_inches='tight')
         else:
+            # plot log-likelihoods
             fig, ax = plt.subplots(figsize=(7, 2))
             ax.scatter(all_model_nums,drug_fit_score,marker = 'x',color = '#1E152A')
             ax.set_ylabel('Maximised log-likelihood',fontsize=10)
@@ -214,6 +220,7 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
 
         if max_time == 15e3:
             if model_nums == non_opt_model_nums:
+                # plot parameter comparison
                 fig,((ax1,ax2,ax3,ax4,ax5),(ax6,ax7,ax8,ax9,ax10),(ax11,ax12,ax13,ax14,ax15))= plt.subplots(3,5,figsize=(7,4))
                 for m, ax in zip(all_model_nums,[ax1,ax2,ax3,ax4,ax5,ax6,ax7,ax8,ax9,ax10,ax11,ax12,ax13,ax14,ax15]):
                     if m in all_model_nums:

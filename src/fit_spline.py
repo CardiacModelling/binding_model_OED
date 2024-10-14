@@ -21,7 +21,7 @@ args = parser.parse_args()
 
 def main(input, output, lambda_, t_steps, data, max_t):
     df_all = pd.read_csv(f"{input}/synth_Y.csv")
-    # Parameters
+    # Parameters (TODO currently hardcoded to get no. of swps)
     if data == 'milnes':
         t_swp = 10000
         swps = sweeps

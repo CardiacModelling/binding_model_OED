@@ -6,18 +6,20 @@ import myokit
 
 ### Function for generating synthetic data
 def generate_data(herg_model, drug_vals, prot, sd, max_time, bounds, m_sel, concs):
+    '''
+    function for generating synthetic data
+    '''
     # get herg parameters
     if herg_model == '2019_37C':
         herg_vals = [2.07e-3, 7.17e-2, 3.44e-5, 6.18e-2, 4.18e-1, 2.58e-2, 4.75e-2, 2.51e-2, 33.3]
     elif herg_model == 'kemp' or herg_model == '2024_Joey_sis_25C':
         herg_vals = []
 
-    print(max_time)
+    # TODO currently hardcoded to get number of sweeps
     if max_time != 15e3 and herg_model != '2024_Joey_sis_25C':
         swps = int(np.floor(250000/max_time))
     else:
         swps = sweeps
-    print(swps)
 
     # define protocol
     protocol = myokit.load_protocol(prot)
@@ -43,7 +45,7 @@ def generate_data(herg_model, drug_vals, prot, sd, max_time, bounds, m_sel, conc
         X_full = []
         Y_full = []
 
-        # load model
+        # load model (TODO currently hardcoded based on which model)
         if herg_model != 'kemp':
             model = Model(f'm{m_sel}',
                             protocol,
@@ -114,6 +116,11 @@ def generate_data(herg_model, drug_vals, prot, sd, max_time, bounds, m_sel, conc
 
 ### Function for extracting protocol steps
 def get_steps(v_steps, t_steps, pars):
+    '''
+    loops through the two arrays v_steps and t_steps,
+    looks for the cases where there is a nan, and populates
+    this instance (in a copy) with the next parameter in the pars array
+    '''
     v_st = np.copy(v_steps)
     t_st = np.copy(t_steps)
     v_nan = (i for i, v in enumerate(v_steps) if np.isnan(v))
@@ -132,6 +139,10 @@ def get_steps(v_steps, t_steps, pars):
 
 ### Function for creating protocols
 def create_protocol(v_steps, t_steps):
+    '''
+    creates a myokit protocol with steps 
+    to voltages (v_steps) at times (t_steps)
+    '''
     if len(v_steps) != len(t_steps):
         print("Invalid protocol")
         return None
@@ -142,13 +153,18 @@ def create_protocol(v_steps, t_steps):
     return prot
 
 ### Function for getting model outputs
-def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = None, alt_times = None, wins = [1e3, 11e3], wins_alt = [1e3, 11e3]):
+def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = None, 
+                  alt_times = None, wins = [1e3, 11e3], wins_alt = [1e3, 11e3]):
+    '''
+    function to generate model output during the protocol optimisation step
+    '''
     # get herg parameters
     if herg_model == '2019_37C':
         herg_vals = [2.07e-3, 7.17e-2, 3.44e-5, 6.18e-2, 4.18e-1, 2.58e-2, 4.75e-2, 2.51e-2, 33.3]
     elif herg_model == 'kemp':
         herg_vals = []
     model_out = {}
+    # get no. of sweeps such that the total length is approximately 250s
     swps = int(np.floor(250000/(times[-1]+alt_times[-1])))
     win = (times >= wins[0]) & (times < wins[1])
     if alt_protocol is not None:
@@ -157,6 +173,7 @@ def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = Non
         binding_params = model_pars[m]
         model_out[m] = {}
         for conc in concs:
+            # TODO hardcoded to define myokit model
             if herg_model != 'kemp':
                 model = Model(f'm{m}',
                                 prot,
@@ -173,6 +190,7 @@ def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = Non
             if m in ['12', '13']:
                 model.fix_kt()
             try:
+                # loop to simulate and append proportion open model output for no. of sweeps 
                 model_milnes = []
                 control = []
                 model.set_dose(0)
