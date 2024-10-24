@@ -33,6 +33,7 @@ parser.add_argument('-o', '--output', type = str, help='Output folder')
 parser.add_argument('-t', type=float, default=15e3, help='Max time')
 parser.add_argument('-b', type=parse_list_of_lists, default="[[1e3, 11e3]]", help='Protocol window(s) of interest')
 parser.add_argument('-c', type = str, help='Drug compound string')
+parser.add_argument('-d', action='store_true', help='Enable dual fitting of Milnes and optimal protocol data')
 args = parser.parse_args()
 
 def get_pars(model_num):
@@ -43,12 +44,21 @@ def get_pars(model_num):
         if herg_model != 'kemp' and herg_model != '2024_Joey_sis_25C':
             model = classes.ConcatMilnesModel(f'm{model_num}', protocol, times,
                                           win, conc, param_dict)
+            if args.d:
+                model_m = classes.ConcatMilnesModel(f'm{model_num}', 'protocols/Milnes_Phil_Trans.mmt', times_m,
+                                          win_m, conc, param_dict)
         elif herg_model == 'kemp':
             model = classes.ConcatMilnesModel(f'kemp-m{model_num}', protocol, times,
                                           win, conc, param_dict)
+            if args.d:
+                model_m = classes.ConcatMilnesModel(f'kemp-m{model_num}', 'protocols/Milnes_Phil_Trans.mmt', times_m,
+                                          win_m, conc, param_dict)
         elif herg_model == '2024_Joey_sis_25C':
             model = classes.ConcatMilnesModel(f'sis-m{model_num}', protocol, times,
                                           win, conc, param_dict)
+            if args.d:
+                model_m = classes.ConcatMilnesModel(f'sis-m{model_num}', 'protocols/Milnes_Phil_Trans.mmt', times_m,
+                                          win_m, conc, param_dict)
         # Load data
         u = np.loadtxt(
             f'{outdir}/fb_synthetic_conc_{conc}.csv',
@@ -57,10 +67,26 @@ def get_pars(model_num):
         )
         concat_time = u[:, 0]
         concat_milnes = u[:, 1]
+        if args.d:
+            # Load data
+            u_m = np.loadtxt(
+                f'{outdir.rsplit("/",1)[0]}/fb_synthetic_conc_{conc}.csv',
+                delimiter=',',
+                skiprows=1
+            )
+            concat_time_m = u_m[:, 0]
+            concat_milnes_m = u_m[:, 1]
         # Create single output problem
         problem = pints.SingleOutputProblem(model, concat_time, concat_milnes)
         likelihoods.append(classes.NormalRatioLogLikelihood(problem, mu_y))
-    f = pints.SumOfIndependentLogPDFs(likelihoods)
+        if args.d:
+            problem_m = pints.SingleOutputProblem(model_m, concat_time_m, concat_milnes_m)
+            likelihoods.append(classes.NormalRatioLogLikelihood(problem_m, mu_y_m))
+
+    if len(likelihoods) > 1:
+        f = pints.SumOfIndependentLogPDFs(likelihoods)
+    else:
+        f = likelihoods[0]
     bounds = boundaries.Boundaries(model_num, fix_hill=False, likelihood=True)
 
     # Fix random seed for reproducibility
@@ -114,8 +140,12 @@ if __name__ == "__main__":
         concs = [30, 100, 300]
     elif args.c == 'quinidine':
         concs = [150, 500, 1500]
+    elif args.c == 'terfenadine':
+        concs = [30, 100, 300]
     elif args.c == 'verapamil':
         concs = [100, 300, 1000]
+    elif args.c == 'DMSO':
+        concs = [1]
     if herg_model != 'kemp' and herg_model != '2024_Joey_sis_25C':
         with open(f'methods/models/params/{p_path}', newline='') as csvfile:
             p_reader = csv.reader(csvfile)
@@ -133,9 +163,21 @@ if __name__ == "__main__":
     win = np.zeros_like(conditions[0], dtype=bool)
     for condition in conditions:
         win |= condition
+    if args.d:
+        times_m = np.arange(0, 15e3, steps)
+        conditions_m = []
+        for b in [[1e3, 11e3]]:
+            conditions_m.append(((times_m >= b[0]) & (times_m < b[-1])))
+        win_m = np.zeros_like(conditions_m[0], dtype=bool)
+        for condition in conditions_m:
+            win_m |= condition
     # read fitted splines
     dfy = pd.read_csv(f"{outdir}/synth_Y_fit.csv")
     mu_y = np.array(dfy['0'])
+    if args.d:
+        # read fitted splines
+        dfy_m = pd.read_csv(f"{outdir.rsplit('/',1)[0]}/synth_Y_fit.csv")
+        mu_y_m = np.array(dfy_m['0'])
     # fit model
     pars, sc = get_pars(model_num)
     print(f'{model_num}: {pars}, {sc}')

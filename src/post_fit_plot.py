@@ -38,10 +38,10 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
     elif herg != '2024_Joey_sis_25C':
         swps = int(np.floor(250000/max_time))
     else:
-        swps = 10
+        swps = 20
 
     # TODO hardcoded to determine sweep length
-    if max_time == 15e3:
+    if max_time == 15e3 or max_time == 15350:
         swp_len=10e3
     elif herg == '2024_Joey_sis_25C':
         swp_len=[3340, 3330, 10e3]
@@ -87,12 +87,12 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
             if herg != '2024_Joey_sis_25C' and max_time != 15e3:
                 xticks.append(b[0] + swp_len[s_j]/2 + i*len(synth_Yfit)/(2*swps))
                 s_j+=1
-            elif herg != '2024_Joey_sis_25C':
+            elif herg != '2024_Joey_sis_25C' or max_time == 15350:
                 xticks.append(b[0] + swp_len/2 + i*len(synth_Yfit)/(2*swps))
             else:
                 xticks.append(b[0] + swp_len[s_j]/2 + i*len(synth_Yfit)/(2*swps))
                 s_j+=1
-    if max_time == 15e3:
+    if max_time == 15e3 or max_time == 15350:
         xlims=[(xval-swp_len/2, xval+swp_len/2) for xval in xticks]
     elif herg == '2024_Joey_sis_25C':
         xlims=[]
@@ -256,8 +256,12 @@ if __name__ == "__main__":
         concs = [30, 100, 300]
     elif args.d == 'quinidine':
         concs = [150, 500, 1500]
+    elif args.d == 'terfenadine':
+        concs = [30, 100, 300]
     elif args.d == 'verapamil':
         concs = [100, 300, 1000]
+    elif args.d == 'DMSO':
+        concs = [1]
     colrs = [f'C{i}' for i in range(len(concs))]
     m_list = ast.literal_eval(args.m)
     main(m_list, args.p, args.t, args.b, args.e, args.o)

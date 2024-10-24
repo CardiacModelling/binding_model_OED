@@ -59,7 +59,7 @@ class ConcatMilnesModel(pints.ForwardModel):
         self._conc = conc
         # TODO currently hardcoded to get number of pulses
         if model.split("-")[0] == 'sis':
-            self.n_pulses = 10
+            self.n_pulses = 20
         elif times[-1] != 14999.5:
             self.n_pulses = int(np.floor(250000/times[-1]))
         else:

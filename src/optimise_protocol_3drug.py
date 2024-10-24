@@ -21,7 +21,7 @@ parser.add_argument('-t', type=float, default=15e3, help='Max time')
 parser.add_argument('-b', type=list, default=[[1e3, 11e3]], help='Protocol window(s) of interest')
 parser.add_argument('-e', type=str, default='joey_sis', help='hERG model parameters')
 parser.add_argument('-o', type=str, required=True, help='output folder for synthetic data')
-parser.add_argument('-c', type=str, help='drug compound')
+parser.add_argument('-c', type=str, help='drug compounds')
 parser.add_argument('-r', action='store_true', help='set true for real data')
 args = parser.parse_args()
 
@@ -49,33 +49,42 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
                 self.v_st, self.t_st = funcs.get_steps(v_steps, t_steps, self.pars)
                 prot = funcs.create_protocol(self.v_st, self.t_st)
             # generate model output under the new protocol
+            model_out = []
+            cont_out = []
             if alt_protocol is not None:
-                model_out, swps = funcs.model_outputs(model_pars, herg, prot, times = np.arange(0, np.sum(self.t_st), 10), concs = concs,
-                                          alt_protocol = prot_alt, alt_times = np.arange(0, np.sum(self.t_st_alt), 10), wins = [1e3, np.sum(self.t_st[1:4])],
-                                          wins_alt = [1e3, np.sum(self.t_st_alt[1:4])])
+                for mp, co in zip(model_pars, concs):
+                    model_out_t, swps_t = funcs.model_outputs(mp, herg, prot, times = np.arange(0, np.sum(self.t_st), 10), concs = co,
+                                              alt_protocol = prot_alt, alt_times = np.arange(0, np.sum(self.t_st_alt), 10), wins = [1e3, np.sum(self.t_st[1:4])],
+                                              wins_alt = [1e3, np.sum(self.t_st_alt[1:4])])
+                    model_out = np.append(model_out, model_out_t)
+                    #cont_out.append(cont_t)
             else:
-                model_out, swps = funcs.model_outputs(model_pars, herg, prot, times = np.arange(0, np.sum(self.t_st), 10), concs = concs, wins = [1e3, np.sum(self.t_st[1:4])])
-            ### loop through models and concentrations to get traces
-            all_traces = []
-            for m in model_out:
-                model_trace = []
-                for c in concs:
-                    model_trace = np.append(model_trace, model_out[m][c])
-                all_traces.append(model_trace)
-            #conts = []
-            #for c in concs:
-            #    conts = np.append(conts, cont)
-            ssq = [sum((m-n)**2) for i,m in enumerate(all_traces) for j,n in enumerate(all_traces) if i < j]
-            # calculate expected likelihood ratio (assuming normal ratio data)
-            #lhoods = []
-            #for i,m in enumerate(all_traces):
-            #    for j,n in enumerate(all_traces):
-            #        if i < j:
-            #            top = np.exp(-conts**2*((m**2+1)/(2*sd**2))) + np.sqrt(np.pi/2)*(conts/sd)*np.sqrt(1+m**2)*special.erf((conts/(np.sqrt(2)*sd))*np.sqrt(1+m**2))
-            #            bottom = np.exp(-conts**2*((n**2+1)/(2*sd**2))) + np.sqrt(np.pi/2)*(conts/sd)*((1+m*n)/np.sqrt(1+m**2))*special.erf((conts*(1+m*n))/(np.sqrt(2)*sd*np.sqrt(1+m**2)))*np.exp(-(conts**2*(m-n)**2)/(2*sd**2*(1+m**2)))
-            #            lhoods.append(-2*np.sum(np.log(top/bottom)))
-            out = -np.median(ssq)
-            #out = np.median(lhoods)
+                for mp, co in zip(model_pars, concs):
+                    model_out_t, swps_t = funcs.model_outputs(mp, herg, prot, times = np.arange(0, np.sum(self.t_st), 10), concs = co, wins = [1e3, np.sum(self.t_st[1:4])])
+                    model_out = np.append(model_out, model_out_t)
+                    #cont_out.append(cont_t)
+            ### loop through models, drugs, and concentrations to get traces
+            out = 0
+            for i,d in enumerate(model_out):
+                all_traces = []
+                for m in d:
+                    model_trace = []
+                    #conts = []
+                    for c in concs[i]:
+                        model_trace = np.append(model_trace, d[m][c])
+                        #conts = np.append(conts, cont_out[i])
+                    all_traces.append(model_trace)
+                ssq = [sum((m-n)**2) for i,m in enumerate(all_traces) for j,n in enumerate(all_traces) if i < j]
+                # calculate expected likelihood ratio (assuming normal ratio data)
+                #lhoods = []
+                #for i,m in enumerate(all_traces):
+                #    for j,n in enumerate(all_traces):
+                #        if i < j:
+                #            top = np.exp(-conts**2*((m**2+1)/(2*sd**2))) + np.sqrt(np.pi/2)*(conts/sd)*np.sqrt(1+m**2)*special.erf((conts/(np.sqrt(2)*sd))*np.sqrt(1+m**2))
+                #            bottom = np.exp(-conts**2*((n**2+1)/(2*sd**2))) + np.sqrt(np.pi/2)*(conts/sd)*((1+m*n)/np.sqrt(1+m**2))*special.erf((conts*(1+m*n))/(np.sqrt(2)*sd*np.sqrt(1+m**2)))*np.exp(-(conts**2*(m-n)**2)/(2*sd**2*(1+m**2)))
+                #            lhoods.append(-2*np.sum(np.log(top/bottom)))
+                out += -np.median(ssq)
+                #out += np.median(lhoods)
             return out
 
         def n_parameters(self):
@@ -109,23 +118,22 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
         design = DrugBind(p0)
 
     # Fix random seed for reproducibility
-    np.random.seed(101)
+    np.random.seed(106)
 
-    # Loop through 100 boundary samples and select the best 
+    # Loop through 100 boundary samples and select the best
     # to use as intialisation
+    print(design([50,-31.4,-33.3,53,5000,5000,56,-21.1,-27.5,-33.4,5000,4997,5000,9200]))
     score = 1e15
     for i in range(0,100):
         q0 = boundaries.sample()[0]
         try:
             temp = design(q0)
-            print(f'temp score: {temp}')
             if temp < score:
                 score = temp
                 q0save = q0
         except Exception as e:
             print(f"An error occurred: {e}")
-
-    print(f'init_score: {score}')
+    print(f'init score: {score}')
     # Define optimiser
     optimiser = pints.CMAES
     if alt_protocol is not None:
@@ -178,16 +186,19 @@ def main(model_nums, max_time, bounds, herg, output_folder):
        length += len(times[win])
 
     # get fitted drug-binding parameters
-    drug_fit_pars = {}
-    for j, m in enumerate(model_nums):
-        df = pd.read_csv(f'{output_folder}/fits/{model_nums[j]}_fit_{length}_points.csv')
-        parstring = df.loc[df['score'].idxmax()]['pars']
-        cleaned_string = parstring.replace("[", "").replace("]", "").replace("\n", "").strip()
-        parlist = [float(i) for i in cleaned_string.split(" ") if i]
-        drug_fit_pars[m] = parlist
+    drug_fit_pars_all = []
+    for drug in d_list:
+        drug_fit_pars = {}
+        for j, m in enumerate(model_nums):
+            df = pd.read_csv(f'{output_folder}/{drug}/fits/{model_nums[j]}_fit_{length}_points.csv')
+            parstring = df.loc[df['score'].idxmax()]['pars']
+            cleaned_string = parstring.replace("[", "").replace("]", "").replace("\n", "").strip()
+            parlist = [float(i) for i in cleaned_string.split(" ") if i]
+            drug_fit_pars[m] = parlist
+        drug_fit_pars_all = np.append(drug_fit_pars_all, drug_fit_pars)
 
     # perform optimisation
-    p_out, cost = get_opt_prot(drug_fit_pars, herg, v_steps, t_steps, p0_1, CMAES_pop = 7, max_iter = 500, alt_protocol = p0_2)
+    p_out, cost = get_opt_prot(drug_fit_pars_all, herg, v_steps, t_steps, p0_1, CMAES_pop = 7, max_iter = 500, alt_protocol = p0_2)
     print(f'Final objective cost: {cost}')
     print(f'Final optimised params: {p_out}')
 
@@ -214,13 +225,14 @@ def main(model_nums, max_time, bounds, herg, output_folder):
         writer.writerow(t_steps)
 
 if __name__ == "__main__":
+    d_list = ast.literal_eval(args.c)
     if args.r:
-        if args.c == 'verapamil':
-            concs=[100,300,1000]
-        elif args.c == 'bepridil':
-            concs=[30,100,300]
-        elif args.c == 'terfenadine':
-            concs=[100,300,1000]
+        concs = []
+        for drug in d_list:
+            if drug == 'verapamil':
+                concs.append([100,300,1000])
+            elif drug == 'bepridil' or drug == 'terfenadine':
+                concs.append([30,100,300])
     else:
         concs = parameters.drug_concs[args.c]
     m_list = ast.literal_eval(args.m)

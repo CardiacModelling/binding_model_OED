@@ -30,6 +30,9 @@ def main(input, output, lambda_, t_steps, data, max_t):
         t_swp = t_steps[j]
         t_total = 0
         swps = int(np.floor(250000/max_t))*6
+    elif data == 'milnes real':
+        t_swp = 10000
+        swps = 20
     else:
         lens = [3340, 3330, 3340, 3330, 3330]
         t_total = 0
@@ -39,7 +42,7 @@ def main(input, output, lambda_, t_steps, data, max_t):
 
     # Fit splines
     for i in range(swps):
-        if data == 'milnes':
+        if data == 'milnes' or data == 'milnes real':
             df_rep = df_all[(df_all['t'] >= t_swp * i) & (df_all['t'] < t_swp * (i + 1))][['t', 'x']]
             knots = np.arange(t_swp * i, t_swp * (i + 1) + t_swp/2, t_swp/2)
         elif data == 'opt':

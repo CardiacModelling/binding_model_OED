@@ -18,8 +18,10 @@ def generate_data(herg_model, drug_vals, prot, sd, max_time, bounds, m_sel, conc
     # TODO currently hardcoded to get number of sweeps
     if max_time != 15e3 and herg_model != '2024_Joey_sis_25C':
         swps = int(np.floor(250000/max_time))
-    else:
+    elif max_time != 15350:
         swps = sweeps
+    else:
+        swps = 20
 
     # define protocol
     protocol = myokit.load_protocol(prot)
@@ -161,11 +163,12 @@ def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = Non
     # get herg parameters
     if herg_model == '2019_37C':
         herg_vals = [2.07e-3, 7.17e-2, 3.44e-5, 6.18e-2, 4.18e-1, 2.58e-2, 4.75e-2, 2.51e-2, 33.3]
-    elif herg_model == 'kemp':
+    elif herg_model == 'kemp' or herg_model == '2024_Joey_sis_25C':
         herg_vals = []
     model_out = {}
     # get no. of sweeps such that the total length is approximately 250s
-    swps = int(np.floor(250000/(times[-1]+alt_times[-1])))
+    #swps = int(np.floor(250000/(times[-1]+alt_times[-1])))
+    swps = 5
     win = (times >= wins[0]) & (times < wins[1])
     if alt_protocol is not None:
         win_alt = (alt_times >= wins_alt[0]) & (alt_times < wins_alt[1])
@@ -181,8 +184,13 @@ def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = Non
                                 analytical=True)
                 # set hERG model parameters
                 model.set_fix_parameters({p:v for p, v in zip(herg_pars, herg_vals)})
-            else:
+            elif herg_model == 'kemp':
                 model = Model(f'kemp-m{m}',
+                                prot,
+                                parameters=['binding'],
+                                analytical=True)
+            elif herg_model == '2024_Joey_sis_25C':
+                model = Model(f'sis-m{m}',
                                 prot,
                                 parameters=['binding'],
                                 analytical=True)
@@ -192,28 +200,28 @@ def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = Non
             try:
                 # loop to simulate and append proportion open model output for no. of sweeps 
                 model_milnes = []
-                control = []
-                model.set_dose(0)
-                before = model.simulate(binding_params, times)[win]
-                before_alt = model.simulate(binding_params, alt_times)[win_alt]
+                #control = []
+                #model.set_dose(0)
+                #before = model.simulate(binding_params, times)[win]
+                #before_alt = model.simulate(binding_params, alt_times)[win_alt]
                 model.set_dose(conc)
                 after = model.simulate(binding_params, times)[win]
-                model_milnes = np.append(model_milnes, after/before)
-                control = np.append(control, before)
+                model_milnes = np.append(model_milnes, after)
+                #control = np.append(control, before)
                 for i in range(swps*2-1):
                     if (alt_protocol is not None) & ((i % 2) == 0):
                         model.change_protocol(alt_protocol)
                         after = model.simulate(binding_params, alt_times, reset=False)[win_alt]
-                        model_milnes = np.append(model_milnes, after/before_alt)
-                        control	= np.append(control, before_alt)
+                        model_milnes = np.append(model_milnes, after)
+                        #control	= np.append(control, before_alt)
                         model.change_protocol(prot)
                     else:
                         after = model.simulate(binding_params, times, reset=False)[win]
-                        model_milnes = np.append(model_milnes, after/before)
-                        control = np.append(control, before)
+                        model_milnes = np.append(model_milnes, after)
+                        #control = np.append(control, before)
                 model_out[m][conc] = model_milnes
-                save_control = control
+                #save_control = control
             except:
                 model_out[m][conc] = np.ones(times.shape) * float('inf')
-                save_control = np.ones(times.shape) * float('inf')
-    return model_out, save_control, swps
+                #save_control = np.ones(times.shape) * float('inf')
+    return model_out, swps
