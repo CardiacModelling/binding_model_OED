@@ -260,8 +260,10 @@ class Model(pints.ForwardModel):
 
         # Run!
         try:
-            self.simulation1.pre(t_hold)
-            self.simulation2.set_state(self.simulation1.state())
+            # only prepace in the first sweep
+            if reset:
+                self.simulation1.pre(t_hold)
+                self.simulation2.set_state(self.simulation1.state())
             if not self.analytical:
                 d = self.simulation2.run(np.max(times) + 0.02,
                     log_times = times,

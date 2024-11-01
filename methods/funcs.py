@@ -155,8 +155,8 @@ def create_protocol(v_steps, t_steps):
     return prot
 
 ### Function for getting model outputs
-def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = None, 
-                  alt_times = None, wins = [1e3, 11e3], wins_alt = [1e3, 11e3]):
+def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = None,
+                  alt_times = None, wins = [1e3, 11e3], wins_alt = [1e3, 11e3], both = True):
     '''
     function to generate model output during the protocol optimisation step
     '''
@@ -169,7 +169,11 @@ def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = Non
     # get no. of sweeps such that the total length is approximately 250s
     #swps = int(np.floor(250000/(times[-1]+alt_times[-1])))
     swps = 5
-    win = (times >= wins[0]) & (times < wins[1])
+    if both == False:
+    	win = (times >= wins[0]) & (times < wins[1])
+    else:
+        win_1 = (times >= wins[0][0]) & (times < wins[0][1])
+        win_2 = (times >= wins[1][0]) & (times < wins[1][1])
     if alt_protocol is not None:
         win_alt = (alt_times >= wins_alt[0]) & (alt_times < wins_alt[1])
     for m in model_pars:
@@ -177,7 +181,7 @@ def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = Non
         model_out[m] = {}
         for conc in concs:
             # TODO hardcoded to define myokit model
-            if herg_model != 'kemp':
+            if (herg_model != 'kemp') and (herg_model != '2024_Joey_sis_25C'):
                 model = Model(f'm{m}',
                                 prot,
                                 parameters=['binding'],
@@ -198,27 +202,38 @@ def model_outputs(model_pars, herg_model, prot, times, concs, alt_protocol = Non
             if m in ['12', '13']:
                 model.fix_kt()
             try:
-                # loop to simulate and append proportion open model output for no. of sweeps 
-                model_milnes = []
-                #control = []
-                #model.set_dose(0)
-                #before = model.simulate(binding_params, times)[win]
-                #before_alt = model.simulate(binding_params, alt_times)[win_alt]
-                model.set_dose(conc)
-                after = model.simulate(binding_params, times)[win]
-                model_milnes = np.append(model_milnes, after)
-                #control = np.append(control, before)
-                for i in range(swps*2-1):
-                    if (alt_protocol is not None) & ((i % 2) == 0):
-                        model.change_protocol(alt_protocol)
-                        after = model.simulate(binding_params, alt_times, reset=False)[win_alt]
-                        model_milnes = np.append(model_milnes, after)
-                        #control	= np.append(control, before_alt)
-                        model.change_protocol(prot)
-                    else:
-                        after = model.simulate(binding_params, times, reset=False)[win]
-                        model_milnes = np.append(model_milnes, after)
-                        #control = np.append(control, before)
+                if both:
+                    model_milnes = []
+                    model.set_dose(conc)
+                    after = model.simulate(binding_params, times)
+                    model_milnes = np.append(model_milnes, after[win_1])
+                    model_milnes = np.append(model_milnes, after[win_2])
+                    for i in range(swps-1):
+                        after = model.simulate(binding_params, times, reset=False)
+                        model_milnes = np.append(model_milnes, after[win_1])
+                        model_milnes = np.append(model_milnes, after[win_2]) 
+                else:
+                    # loop to simulate and append proportion open model output for no. of sweeps 
+                    model_milnes = []
+                    #control = []
+                    #model.set_dose(0)
+                    #before = model.simulate(binding_params, times)[win]
+                    #before_alt = model.simulate(binding_params, alt_times)[win_alt]
+                    model.set_dose(conc)
+                    after = model.simulate(binding_params, times)[win]
+                    model_milnes = np.append(model_milnes, after)
+                    #control = np.append(control, before)
+                    for i in range(swps*2-1):
+                        if (alt_protocol is not None) & ((i % 2) == 0):
+                            model.change_protocol(alt_protocol)
+                            after = model.simulate(binding_params, alt_times, reset=False)[win_alt]
+                            model_milnes = np.append(model_milnes, after)
+                            #control	= np.append(control, before_alt)
+                            model.change_protocol(prot)
+                        else:
+                            after = model.simulate(binding_params, times, reset=False)[win]
+                            model_milnes = np.append(model_milnes, after)
+                            #control = np.append(control, before)
                 model_out[m][conc] = model_milnes
                 #save_control = control
             except:
