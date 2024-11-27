@@ -35,4 +35,4 @@ alt_win_str="[${win_alt[@]}]"
 alt_win_str=$(echo $alt_win_str | sed 's/ /,/g')
 wins_str="[$win_str,$alt_win_str]"
 
-python -u src/fit_models.py -r ${repeats} -m ${models[SLURM_ARRAY_TASK_ID-1]} -p ${herg_pars} -v ${protocol} -o ${dir}/opt_synth_data -c ${compound} > ${dir}/opt_synth_data/fitting_output/model_${models[SLURM_ARRAY_TASK_ID-1]}_output.txt -t $ttime -b "$wins_str"
+python -u src/fit_models.py -r ${repeats} -m ${models[SLURM_ARRAY_TASK_ID-1]} -p ${herg_pars} -v ${protocol} -o ${dir}/opt_synth_data -c ${compound} > ${dir}/opt_synth_data/fitting_output/model_${models[SLURM_ARRAY_TASK_ID-1]}_output.txt -t $ttime -b "$wins_str" -d

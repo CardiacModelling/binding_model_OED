@@ -45,7 +45,11 @@ def get_pars(model_num):
             model = classes.ConcatMilnesModel(f'm{model_num}', protocol, times,
                                           win, conc, param_dict)
             if args.d:
-                model_m = classes.ConcatMilnesModel(f'm{model_num}', 'protocols/Milnes_Phil_Trans.mmt', times_m,
+                if protocol != "protocols/3_drug_protocol_23_10_24.mmt" and protocol != "protocols/3_drug_protocol_14_11_24.mmt":
+                    model_m = classes.ConcatMilnesModel(f'm{model_num}', 'protocols/Milnes_Phil_Trans.mmt', times_m,
+                                          win_m, conc, param_dict)
+                else:
+                    model_m = classes.ConcatMilnesModel(f'm{model_num}', 'protocols/Milnes_16102024_MA1_FP_RT.mmt', times_m,
                                           win_m, conc, param_dict)
         elif herg_model == 'kemp':
             model = classes.ConcatMilnesModel(f'kemp-m{model_num}', protocol, times,
@@ -57,7 +61,11 @@ def get_pars(model_num):
             model = classes.ConcatMilnesModel(f'sis-m{model_num}', protocol, times,
                                           win, conc, param_dict)
             if args.d:
-                model_m = classes.ConcatMilnesModel(f'sis-m{model_num}', 'protocols/Milnes_Phil_Trans.mmt', times_m,
+                if protocol != "protocols/3_drug_protocol_23_10_24.mmt" and protocol != "protocols/3_drug_protocol_14_11_24.mmt":
+                    model_m = classes.ConcatMilnesModel(f'sis-m{model_num}', 'protocols/Milnes_Phil_Trans.mmt', times_m,
+                                          win_m, conc, param_dict)
+                else:
+                    model_m = classes.ConcatMilnesModel(f'sis-m{model_num}', 'protocols/Milnes_16102024_MA1_FP_RT.mmt', times_m,
                                           win_m, conc, param_dict)
         # Load data
         u = np.loadtxt(
@@ -68,12 +76,27 @@ def get_pars(model_num):
         concat_time = u[:, 0]
         concat_milnes = u[:, 1]
         if args.d:
-            # Load data
-            u_m = np.loadtxt(
-                f'{outdir.rsplit("/",1)[0]}/fb_synthetic_conc_{conc}.csv',
-                delimiter=',',
-                skiprows=1
-            )
+            if protocol != "protocols/3_drug_protocol_23_10_24.mmt" and protocol != "protocols/3_drug_protocol_14_11_24.mmt":
+                # Load data
+                u_m = np.loadtxt(
+                    f'{outdir.rsplit("/",1)[0]}/fb_synthetic_conc_{conc}.csv',
+                    delimiter=',',
+                    skiprows=1
+                )
+            elif protocol == "protocols/3_drug_protocol_23_10_24.mmt":
+                # Load data
+                u_m = np.loadtxt(
+                    f'outputs_real_16102024_MA1_FP_RT/{args.c}/fb_synthetic_conc_{conc}.csv',
+                    delimiter=',',
+                    skiprows=1
+                )
+            elif protocol == "protocols/3_drug_protocol_14_11_24.mmt":
+                # Load data
+                u_m = np.loadtxt(
+                    f'outputs_real_30102024_MA_FP_RT/{args.c}/fb_synthetic_conc_{conc}.csv',
+                    delimiter=',',
+                    skiprows=1
+                )
             concat_time_m = u_m[:, 0]
             concat_milnes_m = u_m[:, 1]
         # Create single output problem
@@ -144,6 +167,10 @@ if __name__ == "__main__":
         concs = [30, 100, 300]
     elif args.c == 'verapamil':
         concs = [100, 300, 1000]
+    elif args.c == 'diltiazem':
+        concs = [3000, 10000, 30000]
+    elif args.c == 'chlorpromazine':
+        concs = [150, 500, 1500]
     elif args.c == 'DMSO':
         concs = [1]
     if herg_model != 'kemp' and herg_model != '2024_Joey_sis_25C':
@@ -164,25 +191,41 @@ if __name__ == "__main__":
     for condition in conditions:
         win |= condition
     if args.d:
-        times_m = np.arange(0, 15e3, steps)
-        conditions_m = []
-        for b in [[1e3, 11e3]]:
-            conditions_m.append(((times_m >= b[0]) & (times_m < b[-1])))
+        if protocol != "protocols/3_drug_protocol_23_10_24.mmt" and protocol != "protocols/3_drug_protocol_14_11_24.mmt":
+            times_m = np.arange(0, 15e3, steps)
+            conditions_m = []
+            for b in [[1e3, 11e3]]:
+                conditions_m.append(((times_m >= b[0]) & (times_m < b[-1])))
+        else:
+            times_m = np.arange(0, 15.35e3, steps)
+            conditions_m = []
+            for b in [[1.35e3, 11.35e3]]:
+                conditions_m.append(((times_m >= b[0]) & (times_m < b[-1])))
         win_m = np.zeros_like(conditions_m[0], dtype=bool)
         for condition in conditions_m:
-            win_m |= condition
+             win_m |= condition
     # read fitted splines
     dfy = pd.read_csv(f"{outdir}/synth_Y_fit.csv")
     mu_y = np.array(dfy['0'])
     if args.d:
         # read fitted splines
-        dfy_m = pd.read_csv(f"{outdir.rsplit('/',1)[0]}/synth_Y_fit.csv")
-        mu_y_m = np.array(dfy_m['0'])
+        if protocol != "protocols/3_drug_protocol_23_10_24.mmt" and protocol != "protocols/3_drug_protocol_14_11_24.mmt":
+            dfy_m = pd.read_csv(f"{outdir.rsplit('/',1)[0]}/synth_Y_fit.csv")
+            mu_y_m = np.array(dfy_m['0'])
+        elif protocol == "protocols/3_drug_protocol_23_10_24.mmt":
+            dfy_m = pd.read_csv(f"outputs_real_16102024_MA1_FP_RT/{args.c}/synth_Y_fit.csv")
+            mu_y_m = np.array(dfy_m['0'])
+        elif protocol == "protocols/3_drug_protocol_14_11_24.mmt":
+            dfy_m = pd.read_csv(f"outputs_real_30102024_MA_FP_RT/{args.c}/synth_Y_fit.csv")
+            mu_y_m = np.array(dfy_m['0'])
     # fit model
     pars, sc = get_pars(model_num)
     print(f'{model_num}: {pars}, {sc}')
     print(args)
-    savedir = outdir + "/fits"
+    if args.d:
+        savedir = outdir + "/fits_milnes_and_opt"
+    else:
+        savedir = outdir + "/fits"
     if not os.path.exists(savedir):
         os.makedirs(savedir)
     with open(f"{savedir}/{model_num}_fit_{len(win[(win == True)])}_points.csv", 'w') as f:

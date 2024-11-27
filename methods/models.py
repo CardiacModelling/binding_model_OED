@@ -226,7 +226,6 @@ class Model(pints.ForwardModel):
 
     def simulate(self, parameters, times, extra_log=[], reset=True):
         # simulate() method for PINTS
-
         if self.analytical:
             # Parameters can only set once; need to recreate simulation obj
             self.simulation1 = markov.AnalyticalSimulation(self.m, self.p0)

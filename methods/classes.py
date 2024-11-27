@@ -44,7 +44,7 @@ class NormalRatioLogLikelihood(pints.ProblemLogLikelihood):
 class ConcatMilnesModel(pints.ForwardModel):
     """A PINTS model simulating concatenated protocol."""
     def __init__(self, model, protocol, times, win, conc, param_dict):
-        self._model =  Model(model,
+        self._model = Model(model,
                             protocol,
                             parameters=['binding'],
                             analytical=True)
@@ -59,7 +59,12 @@ class ConcatMilnesModel(pints.ForwardModel):
         self._conc = conc
         # TODO currently hardcoded to get number of pulses
         if model.split("-")[0] == 'sis':
-            self.n_pulses = 20
+            if protocol == "protocols/3_drug_protocol_23_10_24.mmt":
+                self.n_pulses = 13
+            elif protocol == "protocols/3_drug_protocol_14_11_24.mmt":
+                self.n_pulses = 12
+            elif protocol == "protocols/Milnes_16102024_MA1_FP_RT.mmt":
+                self.n_pulses = 13
         elif times[-1] != 14999.5:
             self.n_pulses = int(np.floor(250000/times[-1]))
         else:

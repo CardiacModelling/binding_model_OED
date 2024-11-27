@@ -2,8 +2,8 @@
 #SBATCH --partition=defq
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem=2g
-#SBATCH --time=01:00:00
+#SBATCH --mem=3g
+#SBATCH --time=02:00:00
 
 module use $HOME/.local/easybuild/modules/all
 module load gcc-uoneasy/12.3.0
@@ -16,14 +16,14 @@ conda activate env
 compound=$1
 
 # Set output directory
-dir="outputs_real/${compound}"
+dir="outputs_real_20241114_MA_FP_RT/${compound}"
 
 # Load in real data and save
-python src/syncro_export.py -o ${dir} -d ${compound}
+#python src/syncro_export_20241114_MA_FP_RT.py -o ${dir} -d ${compound}
 
 # Fit splines to new synthetic data control sweeps
-echo "Fitting splines..."
-python src/fit_spline.py -i ${dir} -o ${dir} -m "real"
+#echo "Fitting splines..."
+#python src/fit_spline.py -i ${dir} -o ${dir} -m "20241114_MA_FP_RT" -l 2e8
 
 # Function to check if job is still running
 is_job_running() {
@@ -48,6 +48,6 @@ while is_job_running; do
     sleep 60
 done
 
-ttime=32000
-wins_str="[[1350,4690],[8020,11350],[17930,27930]]"
-python src/post_fit_plot.py -m ${models} -p "protocols/3_drug_protocol.mmt" -t $ttime -b "$wins_str" -o "${dir}" -e ${herg} -d ${compound}
+#ttime=32000
+#wins_str="[[1350,4690],[8020,11350],[17930,27930]]"
+#python src/post_fit_plot.py -m ${models} -p "protocols/3_drug_protocol.mmt" -t $ttime -b "$wins_str" -o "${dir}" -e ${herg} -d ${compound}

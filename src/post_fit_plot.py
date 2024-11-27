@@ -3,7 +3,7 @@ import os
 import sys
 top_level_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, top_level_dir)
-from methods import sweeps, steps, all_model_nums
+from methods import steps, all_model_nums
 import methods.funcs as funcs
 import methods.parameters as parameters
 import pandas as pd
@@ -29,27 +29,20 @@ parser.add_argument('-e', type=str, default='joey_sis', help='hERG model paramet
 parser.add_argument('-o', type=str, required=True, help='output folder for synthetic data')
 parser.add_argument('-c', action='store_true', help='enable parameter and log-likelihood comparison plots')
 parser.add_argument('-d', type=str, help='drug compound')
+parser.add_argument('-s', type=int, default=10, help='no. of sweeps')
+parser.add_argument('-y', action='store_true', help='enable plotting for case where both milnes and opt data have been fitted')
 args = parser.parse_args()
 
-def main(model_nums, prot, max_time, bounds, herg, output_folder):
-    # TODO hardcoded to determine no. of sweeps
-    if max_time == 15e3 and herg != '2024_Joey_sis_25C':
-        swps = sweeps
-    elif herg != '2024_Joey_sis_25C':
-        swps = int(np.floor(250000/max_time))
-    else:
-        swps = 20
-
+def main(model_nums, prot, max_time, bounds, herg, output_folder, swps):
     # TODO hardcoded to determine sweep length
-    if max_time == 15e3 or max_time == 15350:
+    if max_time == 15e3 or max_time == 25350:
         swp_len=10e3
-    elif herg == '2024_Joey_sis_25C':
+    elif herg == '2024_Joey_sis_25C' and prot != "protocols/3_drug_protocol_23_10_24.mmt" and prot != "protocols/3_drug_protocol_14_11_24.mmt":
         swp_len=[3340, 3330, 10e3]
     else:
         swp_len=[]
         for b in bounds:
             swp_len.append(b[1]-b[0])
-
     # define simulation time
     times = np.arange(0, max_time, steps)
     wins = []
@@ -64,7 +57,12 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
     drug_fit_pars = {}
     drug_fit_score = []
     for j, m in enumerate(model_nums):
-        df = pd.read_csv(f'{output_folder}/fits/{model_nums[j]}_fit_{length}_points.csv')
+        if args.y and prot != "protocols/Milnes_16102024_MA1_FP_RT.mmt":
+            df = pd.read_csv(f'{output_folder}/fits_milnes_and_opt/{model_nums[j]}_fit_{length}_points.csv')
+        elif args.y:
+            df = pd.read_csv(f'outputs_real_20241114_MA_FP_RT/{args.d}/fits_milnes_and_opt/{model_nums[j]}_fit_12000_points.csv')
+        else:
+            df = pd.read_csv(f'{output_folder}/fits/{model_nums[j]}_fit_{length}_points.csv')
         parstring = df.loc[df['score'].idxmax()]['pars']
         cleaned_string = parstring.replace("[", "").replace("]", "").replace("\n", "").strip()
         parlist = [float(i) for i in cleaned_string.split(" ") if i]
@@ -73,11 +71,13 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
 
     # get model output for fitted parameters
     synth_Zfit_all = {}
+    synth_Xfit_all = {}
     for m in all_model_nums:
         if m in model_nums:
             drug_vals = drug_fit_pars[m]
-            _, synth_Yfit, synth_Zfit, _, _, _, ts, _ = funcs.generate_data(herg, drug_vals, prot, 0, max_time, bounds, m, concs)
+            synth_Xfit, synth_Yfit, synth_Zfit, _, _, _, ts, _ = funcs.generate_data(herg, drug_vals, prot, 0, max_time, bounds, m, concs, swps, notrecord=True)
             synth_Zfit_all[m] = synth_Zfit
+            synth_Xfit_all[m] = synth_Xfit
 
     # get xticks and xlims
     xticks = []
@@ -87,19 +87,19 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
             if herg != '2024_Joey_sis_25C' and max_time != 15e3:
                 xticks.append(b[0] + swp_len[s_j]/2 + i*len(synth_Yfit)/(2*swps))
                 s_j+=1
-            elif herg != '2024_Joey_sis_25C' or max_time == 15350:
+            elif herg != '2024_Joey_sis_25C' or max_time == 25350:
                 xticks.append(b[0] + swp_len/2 + i*len(synth_Yfit)/(2*swps))
             else:
                 xticks.append(b[0] + swp_len[s_j]/2 + i*len(synth_Yfit)/(2*swps))
                 s_j+=1
-    if max_time == 15e3 or max_time == 15350:
+    if max_time == 15e3 or max_time == 25350:
         xlims=[(xval-swp_len/2, xval+swp_len/2) for xval in xticks]
     elif herg == '2024_Joey_sis_25C':
         xlims=[]
+        s_j = 0
         for xval in xticks:
-            s_j = 0
             xlims.append((xval-swp_len[s_j]/2, xval+swp_len[s_j]/2))
-            if s_j < 2:
+            if s_j < 1:
                 s_j+=1
             else:
                 s_j=0
@@ -114,13 +114,13 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
                 s_j=0
 
     # Create a 5x3 grid of subplots of model fits
-    fig = plt.figure(figsize=(7, 7))
+    fig = plt.figure(figsize=(14, 7))
     outer = gridspec.GridSpec(5, 3, wspace=0.15, hspace=0.45)
     for j, m in enumerate(all_model_nums):
         if m in model_nums:
-            inner = gridspec.GridSpecFromSubplotSpec(1, 10,
+            inner = gridspec.GridSpecFromSubplotSpec(1, 6,
                                 subplot_spec=outer[j], wspace=0.3)
-            for i, lim in zip(np.arange(0, 10), xlims):
+            for i, lim in zip(np.arange(0, 6), xlims):
                 ax = plt.Subplot(fig, inner[i])
                 for conc, col in zip(concs, colrs):
                     dfconc = pd.read_csv(f"{output_folder}/fb_synthetic_conc_{conc}_full.csv")
@@ -158,7 +158,10 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
                     ax.tick_params(labelbottom=False)
                 if j in [1, 2, 4, 5, 7, 8, 10, 11, 13, 14]:
                     ax.tick_params(labelleft=False)
-    plt.savefig(f"{output_folder}/model_fits.png", dpi=600, bbox_inches='tight')
+    if args.y:
+        plt.savefig(f"{output_folder}/model_fits_milnes_and_opt.png", dpi=600, bbox_inches='tight')
+    else:
+        plt.savefig(f"{output_folder}/model_fits.png", dpi=600, bbox_inches='tight')
 
     if args.c:
         if max_time == 15e3:
@@ -216,7 +219,10 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder):
             ax.set_ylim(bottom = minx-100000, top = maxx+100000)
             ax.tick_params(axis='both', which='major', labelsize=8.5)
             ax.set_title('Optimised Protocol', fontsize=10)
-            plt.savefig(f"{output_folder}/loglikelihoods.png", dpi=600, bbox_inches='tight')
+            if args.y:
+                plt.savefig(f"{output_folder}/loglikelihoods_milnes_and_opt.png", dpi=600, bbox_inches='tight')
+            else:
+                plt.savefig(f"{output_folder}/loglikelihoods.png", dpi=600, bbox_inches='tight')
 
         if max_time == 15e3:
             if model_nums == non_opt_model_nums:
@@ -260,8 +266,12 @@ if __name__ == "__main__":
         concs = [30, 100, 300]
     elif args.d == 'verapamil':
         concs = [100, 300, 1000]
+    elif args.d == 'diltiazem':
+        concs = [3000, 10000, 30000]
+    elif args.d == 'chlorpromazine':
+        concs = [150, 500, 1500]
     elif args.d == 'DMSO':
         concs = [1]
     colrs = [f'C{i}' for i in range(len(concs))]
     m_list = ast.literal_eval(args.m)
-    main(m_list, args.p, args.t, args.b, args.e, args.o)
+    main(m_list, args.p, args.t, args.b, args.e, args.o, args.s)

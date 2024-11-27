@@ -19,7 +19,7 @@ herg='2019_37C'
 models="['7','10','11','13']"
 
 # Set output directory
-dir="outputs_lowdim_stepvar_new_prot_obj/${compound}/model_${true_model}_${compound}_disc"
+dir="outputs_lowdim_stepvar_flexswp_newprot_fitboth/${compound}/model_${true_model}_${compound}_disc"
 
 # Plot fitting results
 python src/post_fit_plot.py -m ${models} -p 'protocols/Milnes_Phil_Trans.mmt' -o ${dir} -e ${herg} -d ${compound}

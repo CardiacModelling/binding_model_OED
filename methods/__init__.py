@@ -10,7 +10,7 @@ del(os, inspect, frame)
 
 concentrations = {
     'K_i': 140,
-    'K_o': 5,
+    'K_o': 4,
 }
 
 results = 'results'

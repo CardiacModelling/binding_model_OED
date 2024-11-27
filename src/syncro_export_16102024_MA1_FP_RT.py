@@ -30,7 +30,7 @@ cols_all = {'terfenadine': [['02','03','04'],['05','06'],['07','08']],
 
 ### Define signal-to-noise QC function
 def get_snr(cc_well, swp):
-    flat_section = cc_well[swp][26000:] - cc_well[0][26000:]
+    flat_section = cc_well[swp][:1600] - cc_well[0][:1600]
     noise = np.var(flat_section)
     signal = list(cc_well[swp][2700:22700] - cc_well[0][2700:22700])
     return sum(sn < (0-noise/2) for sn in signal)
@@ -68,24 +68,24 @@ def main(output_folder, drug, concs, cols):
                     b1all[well] = b1
                     b2all[well] = b2
             ### additional QC
-            wells_filt = ['G12', 'O21', 'M22']
+            wells_filt = ['N05', 'O09', 'F12', 'G12', 'H14', 'M19', 'O21', 'M22']
             j = 0
             for well in list(curr_conc.keys()):
                 if well not in wells_filt:
-                    if min(b1all[well]) <= -4:
+                    if min(b1all[well]) <= -0.5:
                         if well not in wells_filt:
                             wells_filt+=[well]
-                    if max(b1all[well]) >= 90:
+                    if max(b1all[well]) >= 100:
                         if well not in wells_filt:
                             wells_filt+=[well]
                     j+=1
                     for i in sweeps_oi:
                         if i == 8:
-                            if get_snr(curr_conc[well], i)>40:
+                            if get_snr(curr_conc[well], i)>600:
                                 if well not in wells_filt:
                                     wells_filt+=[well]
                         else:
-                            if get_snr(curr_conc[well], i)>300:
+                            if get_snr(curr_conc[well], i)>600:
                                 if well not in wells_filt:
                                     wells_filt+=[well]
 

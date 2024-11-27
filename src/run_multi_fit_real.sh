@@ -18,13 +18,16 @@ compound=$2
 repeats=$3
 herg_pars=$4
 herg_pars="${herg_pars}.csv"
-protocol=protocols/Milnes_16102024_MA1_FP_RT.mmt
+#protocol=protocols/Milnes_16102024_MA1_FP_RT.mmt
+#protocol=protocols/3_drug_protocol_23_10_24.mmt
+protocol=protocols/3_drug_protocol_14_11_24.mmt
 shift 4
 models=("$@")
 
 # Define protocol details
-ttime=15350
-#wins_str="[[1350,4690],[8020,11350],[17930,27930]]"
-wins_str="[[1350,11350]]"
+ttime=22300
+#wins_str="[[1350,11350]]"
+#wins_str="[[1350,11403],[12459,27456]]"
+wins_str="[[1000,3900],[5200,8300]]"
 
-python -u src/fit_models.py -r ${repeats} -m ${models[SLURM_ARRAY_TASK_ID-1]} -p ${herg_pars} -v ${protocol} -o ${dir} -c ${compound} > ${dir}/fitting_output/model_${models[SLURM_ARRAY_TASK_ID-1]}_output.txt -t $ttime -b "$wins_str"
+python -u src/fit_models.py -r ${repeats} -m ${models[SLURM_ARRAY_TASK_ID-1]} -p ${herg_pars} -v ${protocol} -o ${dir} -c ${compound} > ${dir}/fitting_output/model_${models[SLURM_ARRAY_TASK_ID-1]}_output_both.txt -t $ttime -b "$wins_str" -d

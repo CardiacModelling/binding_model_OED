@@ -1,3 +1,4 @@
+
 # import modules
 import os
 import sys
@@ -15,15 +16,23 @@ import myokit
 import csv
 from scipy import special
 
+def parse_list_of_lists(s):
+    try:
+        # Convert the string representation of the list to an actual list
+        return ast.literal_eval(s)
+    except Exception as e:
+        raise argparse.ArgumentTypeError(f"Invalid list of lists: {s}") from e
+
 parser = argparse.ArgumentParser(description='Plot fits and log-likelihoods')
 parser.add_argument('-m', type=str, required=True, help='Model numbers')
 parser.add_argument('-t', type=float, default=15e3, help='Max time')
-parser.add_argument('-b', type=list, default=[[1e3, 11e3]], help='Protocol window(s) of interest')
+parser.add_argument('-b', type=parse_list_of_lists, default="[[1e3, 11e3]]", help='Protocol window(s) of interest')
 parser.add_argument('-e', type=str, default='2024_Joey_sis_25C', help='hERG model parameters')
 parser.add_argument('-o', type=str, required=True, help='output folder for synthetic data')
 parser.add_argument('-c', type=str, help='drug compounds')
 parser.add_argument('-r', action='store_true', help='set true for real data')
 parser.add_argument('-n', type=int, help='repeat no.')
+parser.add_argument('-y', action='store_true', help='set true for dual fits')
 args = parser.parse_args()
 
 def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_iter = 5, alt_protocol = None):
@@ -56,13 +65,12 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
             if alt_protocol is not None:
                 for mp, co in zip(model_pars, concs):
                     model_out_t, swps_t = funcs.model_outputs(mp, herg, prot, times = np.arange(0, np.sum(self.t_st) + np.sum(self.t_st_alt) + 14000, 10), concs = co,
-                                              wins = [[1e3, np.sum(self.t_st[:4])],[np.sum(self.t_st)+1e3, np.sum(self.t_st)+1e3+np.sum(self.t_st_alt[:4])]])
+                                              wins = [[1e3, np.sum(self.t_st[:4])],[np.sum(self.t_st)+1e3, np.sum(self.t_st)+np.sum(self.t_st_alt[:4])]])
                     model_out = np.append(model_out, model_out_t)
                     #cont_out.append(cont_t)
             else:
                 for mp, co in zip(model_pars, concs):
                     model_out_t, swps_t = funcs.model_outputs(mp, herg, prot, times = np.arange(0, np.sum(self.t_st), 10), concs = co, wins = [1e3, np.sum(self.t_st[1:4])])
-                    print(model_out_t)
                     model_out = np.append(model_out, model_out_t)
                     #cont_out.append(cont_t)
             ### loop through models, drugs, and concentrations to get traces
@@ -87,7 +95,7 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
                 #            lhoods.append(-2*np.sum(np.log(top/bottom)))
                 out += -np.median(ssq)
                 #out += np.median(lhoods)
-            return out
+            return out/len(all_traces[0])
 
         def n_parameters(self):
             return len(self.pars)
@@ -119,6 +127,7 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
     else:
         design = DrugBind(p0)
 
+    np.random.seed(args.n)
     # Loop through 100 boundary samples and select the best
     # to use as intialisation
     score = 1e15
@@ -153,7 +162,7 @@ def get_opt_prot(model_pars, herg, v_steps, t_steps, p0, CMAES_pop = 10, max_ite
             method=optimiser)
     opt.optimiser().set_population_size(CMAES_pop)
     opt.set_max_iterations(max_iter)
-    opt.set_max_unchanged_iterations(iterations=50, threshold=1)
+    opt.set_max_unchanged_iterations(iterations=50, threshold=1e-8) #changed threshold from 1e-6 for 2nd iteration
     opt.set_parallel(-1)
 
     # Run optimisation
@@ -189,7 +198,10 @@ def main(model_nums, max_time, bounds, herg, output_folder, rep):
     for drug in d_list:
         drug_fit_pars = {}
         for j, m in enumerate(model_nums):
-            df = pd.read_csv(f'{output_folder}/{drug}/fits/{model_nums[j]}_fit_{length}_points.csv')
+            if args.y:
+                df = pd.read_csv(f'{output_folder}/{drug}/fits_milnes_and_opt/{model_nums[j]}_fit_{length}_points.csv')
+            else:
+                df = pd.read_csv(f'{output_folder}/{drug}/fits/{model_nums[j]}_fit_{length}_points.csv')
             parstring = df.loc[df['score'].idxmax()]['pars']
             cleaned_string = parstring.replace("[", "").replace("]", "").replace("\n", "").strip()
             parlist = [float(i) for i in cleaned_string.split(" ") if i]
@@ -236,6 +248,10 @@ if __name__ == "__main__":
                 concs.append([100,300,1000])
             elif drug == 'bepridil' or drug == 'terfenadine':
                 concs.append([30,100,300])
+            elif drug == 'quinidine' or drug == 'chlorpromazine':
+                concs.append([150, 500, 1500])
+            elif drug == 'diltiazem':
+                concs.append([3000, 10000, 30000])
     else:
         concs = parameters.drug_concs[args.c]
     m_list = ast.literal_eval(args.m)
