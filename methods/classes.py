@@ -31,7 +31,7 @@ class NormalRatioLogLikelihood(pints.ProblemLogLikelihood):
         delta = sigma_y/self._mu_y  #mu_y spline fit to control
         z = self._values
         q = (1+beta*rho**2*z)/(delta*np.sqrt(1+rho**2*z**2))
-        pdf = rho/(np.pi*(1+z**2))*(np.exp(-(rho**2*beta**2+1)/2*(delta**2)) + np.sqrt(np.pi/2)*q*special.erf(q/np.sqrt(2))*np.exp(-rho**2*(z-beta)**2/(2*(delta**2)*(1+rho**2*z**2))))
+        pdf = rho/(np.pi*(1+z**2))*(np.exp(-(rho**2*beta**2+1)/(2*(delta**2))) + np.sqrt(np.pi/2)*q*special.erf(q/np.sqrt(2))*np.exp(-rho**2*(z-beta)**2/(2*(delta**2)*(1+rho**2*z**2))))
         return np.sum(np.log(pdf))
 
 ### Define PINTS Model
