@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for i in {'bepridil','verapamil','terfenadine'}
+for i in {'diltiazem','chlorpromazine','quinidine'}
 do
     sbatch src/real_data_proc.sh $i
 done

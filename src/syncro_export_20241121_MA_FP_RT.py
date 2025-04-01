@@ -11,8 +11,9 @@ from pcpostprocess.pcpostprocess import leak_correct as lc
 import pickle
 import csv
 import argparse
-import matplotlib
-matplotlib.use('Agg')
+import skfda
+from scipy.linalg import solve
+from sklearn.linear_model import LinearRegression
 
 parser = argparse.ArgumentParser(description='Fitting synthetic data')
 parser.add_argument('-o', type=str, required=True, help='output folder for synthetic data')
@@ -20,29 +21,15 @@ parser.add_argument('-d', type=str, required=True, help='drug compound string')
 parser.add_argument('-n', action='store_true', help='load in new syncropatch data and export to pickle')
 args = parser.parse_args()
 
-concs_all = {'diltiazem': [3000,10000,30000],
-             'chlorpromazine':[150,500,1500],
-             'quinidine': [150,500,1500],
+concs_all = {'terfenadine': [30,100,300],
+             'bepridil':[30,100,300],
+             'verapamil': [100,300,1000],
              'DMSO': [1]}
 
-cols_all = {'diltiazem': [['02','03','04'],['05','06'],['07','08']],
-            'chlorpromazine': [['10','11','12'],['13','14'],['15','16']],
-            'quinidine': [['18','19','20'],['21','22'],['23','24']],
+cols_all = {'terfenadine': [['02','03','04'],['05','06'],['07','08']],
+            'bepridil': [['10','11','12'],['13','14'],['15','16']],
+            'verapamil': [['18','19','20'],['21','22'],['23','24']],
             'DMSO': [['01','09','17']]}
-
-### Define signal-to-noise QC function
-def get_snr(cc_well, swp):
-    flat_section = cc_well[swp][:800] - cc_well[0][:800]
-    pulse_win = [3794, 5176]
-    pulse_1_win = [2000, 3794]
-    noise = np.var(flat_section)
-    signal = list(cc_well[swp][pulse_win[0]:pulse_win[1]] - cc_well[0][pulse_win[0]:pulse_win[1]])
-    signal_1 = list(cc_well[swp][pulse_1_win[0]:pulse_1_win[1]] - cc_well[0][pulse_1_win[0]:pulse_1_win[1]])
-    return sum(sn > (0+noise/2) for sn in signal), sum(sn < (0-noise/2) for sn in signal_1)
-
-import skfda
-from scipy.linalg import solve
-from sklearn.linear_model import LinearRegression
 
 def fit_splines(t, x, n_order = 4, lambda_ = 5, knots = 6):
 
@@ -73,6 +60,14 @@ def fit_lin_reg(t, x):
 
     return model.coef_[0], x_pred
 
+### Define signal-to-noise QC function
+def get_snr(cc_well, swp):
+    flat_section = cc_well[swp][:800] - cc_well[0][:800]
+    noise = np.var(flat_section)
+    signal = list(cc_well[swp][2000:2372] - cc_well[0][2000:2372]) + list(
+                cc_well[swp][4480:7524] - cc_well[0][4480:7524])
+    return sum(sn < (0-noise/2) for sn in signal)
+
 def main(output_folder, drug, concs, cols):
     ### Perform QC1
     QCdf = test_trace.get_onboard_QC_df()
@@ -81,61 +76,72 @@ def main(output_folder, drug, concs, cols):
         (QCdf['Rseries']>1*10**6) & (QCdf['Rseries']<25*10**6)]
     QCdffilt_fb = QCdf_fb[(QCdf_fb['Rseal']>0.1*10**9) & (QCdf_fb['Rseal']<1000*10**9) & (QCdf_fb['Cm']>1*10**-12) & (QCdf_fb['Cm']<100*10**-12) &
      (QCdf_fb['Rseries']>1*10**6) & (QCdf_fb['Rseries']<25*10**6)]
-    sweeps_oi = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+
+    sweeps_oi = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
     for c_j, conc in enumerate(concs):
             ### leak correct
             col = cols[c_j]
             curr_conc = {}
             b1all = {}
+            b2all = {}
             gradcall = {}
             for well in currents.keys():
                 if well[1:] in col and list(QCdffilt[QCdffilt['sweep'].isin(sweeps_oi)]['well']).count(well) == 11 and list(QCdffilt_fb[QCdffilt_fb['sweep'].isin([0])]['well']).count(well) == 1:
                     curr_conc[well] = {}
                     b1 = []
-                    first_c = []
+                    b2 = []
                     for i in sweeps_oi:
-                        (b1i, b2i), ilki = lc.fit_linear_leak(currents[well][i], voltages, ts, 1000, 1800)
+                        if i == 9:
+                            (b1i, b2i), ilki = lc.fit_linear_leak(currents[well][0], voltages, ts, 1000, 1800)
+                        else:
+                            (b1i, b2i), ilki = lc.fit_linear_leak(currents[well][10], voltages, ts, 1000, 1800)
                         curr_conc[well][i] = currents[well][i]-ilki
                         b1 += [b1i]
+                        b2 += [b2i]
                     (b1i, b2i), ilki = lc.fit_linear_leak(currents_fb[well][0], voltages, ts, 1000, 1800)
                     curr_conc[well][0] = currents_fb[well][0]-ilki
-                    for i in [0, 1, 2, 3, 4]:
+                    for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]:
                         (b1i, b2i), ilki = lc.fit_linear_leak(currents[well][0], voltages, ts, 1000, 1800)
                         cont_curr = currents[well][i]-ilki-curr_conc[well][0]
-                        x_hat = fit_splines(ts[5178:9308], cont_curr[5178:9308], n_order = 4, lambda_ = 10**11, knots = 6)
-                        first_c.append([x_hat[0]])
-                    gradc, x_fit = fit_lin_reg([[i] for i in [0, 1, 2, 3, 4]], first_c)
-                    flat_section = curr_conc[well][4][:800] - curr_conc[well][0][:800]
-                    noise = np.var(flat_section)
+                        x_hat = fit_splines(ts[5020:7524], cont_curr[5020:7524], n_order = 4, lambda_ = 10**11, knots = 6)
+                        final_c.append([x_hat[0]])
+                    gradc, x_fit = fit_lin_reg([[i] for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]], final_c)
                     b1 += [b1i]
-                    b1all[well] = [b/noise for b in b1]
-                    gradcall[well] = gradc[0]/noise
+                    b2 += [b2i]
+                    b1all[well] = b1
+                    b2all[well] = b2
+                    gradcall[well] = gradc
+
             ### additional QC
-            wells_filt = ['D01', 'B09', 'K13', 'M13', 'F16', 'B18', 'E18', 'M18', 'O18', 'A19', 'D20', 'J20', 'H21', 'D23', 'F23', 'A24', 'P24',
-                          'C01', 'N01', 'E02', 'O02', 'E03', 'L03', 'E04', 'H04', 'I04', 'O05', 'P05', 'I06', 'C07', 'L07', 'P07', 'P08', 'I10',
-                          'F11', 'H11', 'B12', 'F12', 'H12', 'E13', 'G13', 'O14', 'P14', 'A15', 'B15', 'J15', 'E16', 'H16', 'L16', 'N16', 'B17',
-                          'I20', 'N24', 'F01', 'P01', 'G09', 'A17', 'D17', 'H03', 'J05', 'K05', 'G07', 'I07', 'K07', 'K08', 'H10', 'K10', 'D11',
-                          'D12', 'F15', 'P15', 'E21', 'J22', 'I23', 'A12', 'K12', 'J14', 'L24']
+            wells_filt = ['L01','J09','L17','N17','G17','H02','K02','I03','F04','F06','O06',
+                          'I10','J10','N11','C12','F18','L19','F23','F24','D01','H04','A12',
+                          'G14','I16','K22','N24']
+            j = 0
             for well in list(curr_conc.keys()):
                 if well not in wells_filt:
-                    if gradcall[well] > 0.1 or gradcall[well] < -0.1:
+                    if gradcall[well][0] > 1.5:
                         if well not in wells_filt:
                             wells_filt+=[well]
-                    if min(b1all[well]) <= -0.1:
+                    if min(b1all[well]) <= -0.5:
                         if well not in wells_filt:
                             wells_filt+=[well]
+                    if max(b1all[well]) >= 300:
+                        if well not in wells_filt:
+                            wells_filt+=[well]
+                    j+=1
                     for i in sweeps_oi:
-                        if i == 4:
-                            if get_snr(curr_conc[well], i)[0]>7 or get_snr(curr_conc[well], i)[1]>9:
+                        if i == 9:
+                            if get_snr(curr_conc[well], i)>200:
                                 if well not in wells_filt:
                                     wells_filt+=[well]
                         else:
-                            if get_snr(curr_conc[well], i)[0]>14:
+                            if get_snr(curr_conc[well], i)>200:
                                 if well not in wells_filt:
                                     wells_filt+=[well]
 
             fig,ax=plt.subplots(figsize = (10, 4))
-            pulse_win = [2000, 9308]
+            pulse1 = [2000, 2372]
+            pulse2 = [4480, 7524]
             lc_fb_all = []
             lc_fb_full_all = []
             controls_all = []
@@ -146,27 +152,30 @@ def main(output_folder, drug, concs, cols):
                     t_last_full = 0
                     j+=1
                     fb = curr_conc[well][0]
-                    control1 = curr_conc[well][4][pulse_win[0]:pulse_win[1]] - fb[pulse_win[0]:pulse_win[1]]
-                    control = list(control1)
+                    control1 = curr_conc[well][9][pulse1[0]:pulse1[1]] - fb[pulse1[0]:pulse1[1]]
+                    control2 = curr_conc[well][9][pulse2[0]:pulse2[1]] - fb[pulse2[0]:pulse2[1]]
+                    control = list(control1) + list(control2)
                     controls = []
                     lc_fbs = []
                     lc_fb_full = []
                     timesall = []
                     timesall_full = []
                     for i in sweeps_oi[1:]:
-                        times1 = [t + t_last - ts[pulse_win[0]] for t in ts[pulse_win[0]:pulse_win[1]]]
-                        lc_fb_sweep1 = (curr_conc[well][i][pulse_win[0]:pulse_win[1]] - fb[pulse_win[0]:pulse_win[1]])/control1
-                        lc_fbs += list(lc_fb_sweep1)
-                        lc_fb_full += list((curr_conc[well][i] - fb)/(curr_conc[well][4]-fb))
+                        times1 = [t + t_last - ts[pulse1[0]] for t in ts[pulse1[0]:pulse1[1]]]
+                        times2 = [t + times1[-1] + 0.5 - ts[pulse2[0]] for t in ts[pulse2[0]:pulse2[1]]]
+                        lc_fb_sweep1 = (curr_conc[well][i][pulse1[0]:pulse1[1]] - fb[pulse1[0]:pulse1[1]])/control1
+                        lc_fb_sweep2 = (curr_conc[well][i][pulse2[0]:pulse2[1]] - fb[pulse2[0]:pulse2[1]])/control2
+                        lc_fbs += list(lc_fb_sweep1) + list(lc_fb_sweep2)
+                        lc_fb_full += list((curr_conc[well][i] - fb)/(curr_conc[well][9]-fb))
                         controls += list(control)
-                        timesall += times1
+                        timesall += times1 + times2
                         timesall_full += [t + t_last_full for t in ts]
                         t_last_full = timesall_full[-1] + 0.5
-                        t_last = times1[-1] + 0.5
+                        t_last = times2[-1] + 0.5
                     lc_fb_all.append(lc_fbs)
                     lc_fb_full_all.append(lc_fb_full)
                     controls_all.append(controls)
-            ax.plot(timesall, np.average(lc_fb_all, axis=0), linewidth=0.01)
+            ax.plot(timesall, np.average(lc_fb_all, axis=0))
             ax.set_ylabel('prop. open')
             ax.set_ylim(bottom = -2, top = 3)
             ax.axhline(0, color = 'k', linestyle = '--', linewidth = 0.5, alpha = 0.5)
@@ -197,7 +206,7 @@ if __name__ == "__main__":
     concs = concs_all[drug]
     cols = cols_all[drug]
     colrs = [f'C{i}' for i in range(len(concs))]
-    input_folder="Frankie_Experiments_Oct_Nov_2024/20241128_MA_FP_RT"
+    input_folder="Frankie_Experiments_Oct_Nov_2024/20241121_MA_FP_RT"
 
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -206,15 +215,15 @@ if __name__ == "__main__":
         os.makedirs(f"{output_folder}/fitting_output")
 
     # control and drug sweeps
-    filepath = f"{input_folder}/3_drug_protocol_28_11_24_10.12.54/"
-    json_file = "3_drug_protocol_28_11_24_10.12.54"
+    filepath = f"{input_folder}/3_drug_protocol_21_11_24_09.34.12/"
+    json_file = "3_drug_protocol_21_11_24_09.34.12"
     test_trace = tr(filepath, json_file)
     voltages = test_trace.get_voltage()
     ts = test_trace.get_times()
 
     # full block
-    filepath_fb = f"{input_folder}/3_drug_protocol_28_11_24_10.22.27/"
-    json_file_fb = "3_drug_protocol_28_11_24_10.22.27"
+    filepath_fb = f"{input_folder}/3_drug_protocol_21_11_24_09.44.03/"
+    json_file_fb = "3_drug_protocol_21_11_24_09.44.03"
     test_trace_fb = tr(filepath_fb, json_file_fb)
 
     if new_data:

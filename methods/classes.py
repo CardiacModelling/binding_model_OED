@@ -27,7 +27,7 @@ class NormalRatioLogLikelihood(pints.ProblemLogLikelihood):
     def __call__(self, x):
         sigma = np.asarray(x[-self._no:])
         if any(sigma <= 0): #require positive standard deviation (sd)
-            return -np.inf 
+            return -np.inf
         # assume sd is the same for both control and drug sweeps
         sigma_x = sigma
         sigma_y = sigma
@@ -35,9 +35,26 @@ class NormalRatioLogLikelihood(pints.ProblemLogLikelihood):
         beta = self._problem.evaluate(x[:-self._no]) # evaluate the model
         delta = sigma_y/self._mu_y  #mu_y spline fit to control
         z = self._values # get the data
+
         # calculate pdf and return the sum of log(pdf)
         q = (1+beta*rho**2*z)/(delta*np.sqrt(1+rho**2*z**2))
-        pdf = rho/(np.pi*(1+z**2))*(np.exp(-(rho**2*beta**2+1)/2*(delta**2)) + np.sqrt(np.pi/2)*q*special.erf(q/np.sqrt(2))*np.exp(-rho**2*(z-beta)**2/(2*(delta**2)*(1+rho**2*z**2))))
+
+        pdf = rho/(np.pi*(1+(rho**2)*(z**2)))*(np.exp(-(rho**2*beta**2+1)/(2*(delta**2))) + np.sqrt(np.pi/2)*q*special.erf(q/np.sqrt(2))*np.exp(-rho**2*(z-beta)**2/(2*(delta**2)*(1+rho**2*z**2))))
+
+        # identify indices of 'inf' values in pdf
+        #inf_ind = np.where(np.isinf(np.log(pdf)))[0]
+
+        # sum finite values
+        #finite_vals = np.log(pdf)[~np.isinf(np.log(pdf))]
+        #finite_sum = np.sum(finite_vals)
+
+        # evaluate approximation for 'inf' values and add to sum
+        #for i in inf_ind:
+        #    finite_sum += np.log(1/np.pi) + np.log(rho/(1+rho**2*z[i]**2)) - (rho**2*(z[i]-beta[i])**2)/(2*(delta[i]**2)*(1+rho**2*z[i]**2)) + np.sqrt(np.pi/2)*q[i]*special.erf(q[i]/np.sqrt(2))
+
+        #if len(inf_ind) > 0:
+        #    finite_sum = finite_sum[0]
+
         return np.sum(np.log(pdf))
 
 ### Define PINTS Model
@@ -62,9 +79,13 @@ class ConcatMilnesModel(pints.ForwardModel):
             if protocol == "protocols/3_drug_protocol_23_10_24.mmt":
                 self.n_pulses = 13
             elif protocol == "protocols/3_drug_protocol_14_11_24.mmt":
-                self.n_pulses = 12
+                self.n_pulses = 10
             elif protocol == "protocols/Milnes_16102024_MA1_FP_RT.mmt":
-                self.n_pulses = 13
+                self.n_pulses = 10
+            elif protocol == "protocols/gary_manual.mmt":
+                self.n_pulses = 9
+            else:
+                self.n_pulses = 10
         elif times[-1] != 14999.5:
             self.n_pulses = int(np.floor(250000/times[-1]))
         else:
@@ -76,7 +97,7 @@ class ConcatMilnesModel(pints.ForwardModel):
         # or if they are already specified correctly in the model file
         if model.split("-")[0] != 'kemp' and model.split("-")[0] != 'sis':
             self._model.set_fix_parameters(param_dict)
-        # Initialise control    
+        # Initialise control
         z = np.ones(self._model.n_parameters())
         self._before = self._model.simulate(z, self._times)[self._win]
 

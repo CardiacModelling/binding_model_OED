@@ -32,7 +32,7 @@ def main(input, output, lambda_, t_steps, data, max_t):
         swps = int(np.floor(250000/max_t))*6
     elif data == 'milnes real':
         t_swp = 10000
-        swps = 13
+        swps = 10
     elif data == '24102024_MA_FP_RT':
         t_swp_1 = 10053
         t_swp_2 = 14997
@@ -46,7 +46,18 @@ def main(input, output, lambda_, t_steps, data, max_t):
         t_swp_5 = 2600
         t_swp_6 = 100
         t_total = t_swp_1 + t_swp_2 + t_swp_3 + t_swp_4 + t_swp_5 + t_swp_6
-        swps = 12
+        swps = 10
+    elif data == '20241128_MA_FP_RT':
+        t_swp_1 = 897
+        t_swp_2 = 691
+        t_swp_3 = 2066
+        t_total = t_swp_1 + t_swp_2 + t_swp_3
+        swps = 10
+    elif data == '20241128_MA_FP_RT_2':
+        t_swp_1 = 100
+        t_swp_2 = 1100
+        t_total = t_swp_1*13 + t_swp_2
+        swps = 9
     else:
         lens = [3340, 3330, 3340, 3330, 3330]
         t_total = 0
@@ -58,7 +69,7 @@ def main(input, output, lambda_, t_steps, data, max_t):
     for i in range(swps):
         if data == 'milnes' or data == 'milnes real':
             df_rep = df_all[(df_all['t'] >= t_swp * i) & (df_all['t'] < t_swp * (i + 1))][['t', 'x']]
-            knots = np.arange(t_swp * i, t_swp * (i + 1) + t_swp/2, t_swp/2)
+            knots = np.arange(t_swp * i, t_swp * (i + 1) + t_swp/100, t_swp/100)
         elif data == 'opt':
             df_rep = df_all[(df_all['t'] >= t_total) & (df_all['t'] < t_total + t_swp)][['t', 'x']]
             knots = np.arange(t_total, t_total + t_swp, t_swp/2)
@@ -86,6 +97,42 @@ def main(input, output, lambda_, t_steps, data, max_t):
             knots_4 = np.arange(t_total * i + t_swp_1 + t_swp_2 + t_swp_3, t_total * i + t_swp_1 + t_swp_2 + t_swp_3 + t_swp_4 + t_swp_4/2, t_swp_4/2)
             knots_5 = np.arange(t_total * i + t_swp_1 + t_swp_2 + t_swp_3 + t_swp_4, t_total * i + t_total - t_swp_6 + t_swp_5/20, t_swp_5/20)
             knots_6 = np.arange(t_total * i + t_total - t_swp_6, t_total * i + t_total + t_swp_6/2, t_swp_6/2)
+        elif data == '20241128_MA_FP_RT':
+            df_rep_1 = df_all[(df_all['t'] >= t_total * i) & (df_all['t'] < t_total * i + t_swp_1)][['t', 'x']]
+            df_rep_2 = df_all[(df_all['t'] >= t_total * i + t_swp_1) & (df_all['t'] < t_total * i + t_swp_1 + t_swp_2)][['t', 'x']]
+            df_rep_3 = df_all[(df_all['t'] >= t_total * i + t_total - t_swp_3) & (df_all['t'] < t_total * i + t_total)][['t', 'x']]
+            knots_1 = np.arange(t_total * i, t_total * i + t_swp_1 + t_swp_1/4, t_swp_1/4)
+            knots_2 = np.arange(t_total * i + t_swp_1, t_total * i + t_swp_1 + t_swp_2 + t_swp_2/4, t_swp_2/4)
+            knots_3 = np.arange(t_total * i + t_total - t_swp_3, t_total * i + t_total + t_swp_3/10, t_swp_3/10)
+        elif data == '20241128_MA_FP_RT_2':
+            df_rep_1 = df_all[(df_all['t'] >= t_total * i) & (df_all['t'] < t_total * i + t_swp_1)][['t', 'x']]
+            df_rep_2 = df_all[(df_all['t'] >= t_total * i + t_swp_1) & (df_all['t'] < t_total * i + 2 * t_swp_1)][['t', 'x']]
+            df_rep_3 = df_all[(df_all['t'] >= t_total * i + 2 * t_swp_1) & (df_all['t'] < t_total * i + 3 * t_swp_1)][['t', 'x']]
+            df_rep_4 = df_all[(df_all['t'] >= t_total * i + 3 * t_swp_1) & (df_all['t'] < t_total * i + 4 * t_swp_1)][['t', 'x']]
+            df_rep_5 = df_all[(df_all['t'] >= t_total * i + 4 * t_swp_1) & (df_all['t'] < t_total * i + 5 * t_swp_1)][['t', 'x']]
+            df_rep_6 = df_all[(df_all['t'] >= t_total * i + 5 * t_swp_1) & (df_all['t'] < t_total * i + 6 * t_swp_1)][['t', 'x']]
+            df_rep_7 = df_all[(df_all['t'] >= t_total * i + 6 * t_swp_1) & (df_all['t'] < t_total * i + 7 * t_swp_1)][['t', 'x']]
+            df_rep_8 = df_all[(df_all['t'] >= t_total * i + 7 * t_swp_1) & (df_all['t'] < t_total * i + 7 * t_swp_1 + t_swp_2)][['t', 'x']]
+            df_rep_9 = df_all[(df_all['t'] >= t_total * i + 7 * t_swp_1 + t_swp_2) & (df_all['t'] < t_total * i + 8 * t_swp_1 + t_swp_2)][['t', 'x']]
+            df_rep_10 = df_all[(df_all['t'] >= t_total * i + 8 * t_swp_1 + t_swp_2) & (df_all['t'] < t_total * i + 9 * t_swp_1 + t_swp_2)][['t', 'x']]
+            df_rep_11 = df_all[(df_all['t'] >= t_total * i + 9 * t_swp_1 + t_swp_2) & (df_all['t'] < t_total * i + 10 * t_swp_1 + t_swp_2)][['t', 'x']]
+            df_rep_12 = df_all[(df_all['t'] >= t_total * i + 10 * t_swp_1 + t_swp_2) & (df_all['t'] < t_total * i + 11 * t_swp_1 + t_swp_2)][['t', 'x']]
+            df_rep_13 = df_all[(df_all['t'] >= t_total * i + 11 * t_swp_1 + t_swp_2) & (df_all['t'] < t_total * i + 12 * t_swp_1 + t_swp_2)][['t', 'x']]
+            df_rep_14 = df_all[(df_all['t'] >= t_total * i + 12 * t_swp_1 + t_swp_2) & (df_all['t'] < t_total * i + 13 * t_swp_1 + t_swp_2)][['t', 'x']]
+            knots_1 = np.arange(t_total * i, t_total * i + t_swp_1 + t_swp_1/3, t_swp_1/3)
+            knots_2 = np.arange(t_total * i + t_swp_1, t_total * i + 2 * t_swp_1 + t_swp_1/3, t_swp_1/3)
+            knots_3 = np.arange(t_total * i + 2 * t_swp_1, t_total * i + 3 * t_swp_1 + t_swp_1/3, t_swp_1/3)
+            knots_4 = np.arange(t_total * i + 3 * t_swp_1, t_total * i + 4 * t_swp_1 + t_swp_1/3, t_swp_1/3)
+            knots_5 = np.arange(t_total * i + 4 * t_swp_1, t_total * i + 5 * t_swp_1 + t_swp_1/3, t_swp_1/3)
+            knots_6 = np.arange(t_total * i + 5 * t_swp_1, t_total * i + 6 * t_swp_1 + t_swp_1/3, t_swp_1/3)
+            knots_7 = np.arange(t_total * i + 6 * t_swp_1, t_total * i + 7 * t_swp_1 + t_swp_1/3, t_swp_1/3)
+            knots_8 = np.arange(t_total * i + 7 * t_swp_1, t_total * i + 7 * t_swp_1 + t_swp_2 + t_swp_2/5, t_swp_2/5)
+            knots_9 = np.arange(t_total * i + 7 * t_swp_1 + t_swp_2, t_total * i + 8 * t_swp_1 + t_swp_2 + t_swp_1/3, t_swp_1/3)
+            knots_10 = np.arange(t_total * i + 8 * t_swp_1 + t_swp_2, t_total * i + 9 * t_swp_1 + t_swp_2 + t_swp_1/3, t_swp_1/3)
+            knots_11 = np.arange(t_total * i + 9 * t_swp_1 + t_swp_2, t_total * i + 10 * t_swp_1 + t_swp_2 + t_swp_1/3, t_swp_1/3)
+            knots_12 = np.arange(t_total * i + 10 * t_swp_1 + t_swp_2, t_total * i + 11 * t_swp_1 + t_swp_2 + t_swp_1/3, t_swp_1/3)
+            knots_13 = np.arange(t_total * i + 11 * t_swp_1 + t_swp_2, t_total * i + 12 * t_swp_1 + t_swp_2 + t_swp_1/3, t_swp_1/3)
+            knots_14 = np.arange(t_total * i + 12 * t_swp_1 + t_swp_2, t_total * i + 13 * t_swp_1 + t_swp_2 + t_swp_1/3, t_swp_1/3)
         else:
             ind = int(i % 5)
             t_swp = lens[ind]
@@ -110,8 +157,32 @@ def main(input, output, lambda_, t_steps, data, max_t):
             all_.extend(x_hat_1)
             all_.extend(x_hat_2)
         elif data == '20241114_MA_FP_RT':
-            for knots, df_rep in zip([knots_1,knots_2,knots_3,knots_4,knots_5,knots_5,knots_6],
+            for knots, df_rep in zip([knots_1,knots_2,knots_3,knots_4,knots_5,knots_6],
                                      [df_rep_1,df_rep_2,df_rep_3,df_rep_4,df_rep_5,df_rep_6]):
+                bsplines = skfda.representation.basis.BSplineBasis(knots=knots, order=n_order)
+                phi = np.array(bsplines(df_rep['t'].values)).T[0]
+                operator = skfda.misc.operators.LinearDifferentialOperator(2)
+                regularization = skfda.misc.regularization.L2Regularization(operator)
+                r = regularization.penalty_matrix(bsplines)
+                m = solve(phi.T @ phi + lambda_ * r, phi.T)
+                c_hat = m @ df_rep['x'].values
+                x_hat = phi @ c_hat
+                all_.extend(x_hat)
+        elif data == '20241128_MA_FP_RT':
+            for knots, df_rep in zip([knots_1,knots_2,knots_3],
+                                     [df_rep_1,df_rep_2,df_rep_3]):
+                bsplines = skfda.representation.basis.BSplineBasis(knots=knots, order=n_order)
+                phi = np.array(bsplines(df_rep['t'].values)).T[0]
+                operator = skfda.misc.operators.LinearDifferentialOperator(2)
+                regularization = skfda.misc.regularization.L2Regularization(operator)
+                r = regularization.penalty_matrix(bsplines)
+                m = solve(phi.T @ phi + lambda_ * r, phi.T)
+                c_hat = m @ df_rep['x'].values
+                x_hat = phi @ c_hat
+                all_.extend(x_hat)
+        elif data == '20241128_MA_FP_RT_2':
+            for knots, df_rep in zip([knots_1,knots_2,knots_3,knots_4,knots_5,knots_6,knots_7,knots_8,knots_9,knots_10,knots_11,knots_12,knots_13,knots_14],
+                                     [df_rep_1,df_rep_2,df_rep_3,df_rep_4,df_rep_5,df_rep_6,df_rep_7,df_rep_8,df_rep_9,df_rep_10,df_rep_11,df_rep_12,df_rep_13,df_rep_14]):
                 bsplines = skfda.representation.basis.BSplineBasis(knots=knots, order=n_order)
                 phi = np.array(bsplines(df_rep['t'].values)).T[0]
                 operator = skfda.misc.operators.LinearDifferentialOperator(2)

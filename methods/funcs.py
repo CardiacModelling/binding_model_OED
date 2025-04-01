@@ -12,13 +12,15 @@ def generate_data(herg_model, drug_vals, prot, sd, max_time, bounds, m_sel, conc
     # get herg parameters
     if herg_model == '2019_37C':
         herg_vals = [2.07e-3, 7.17e-2, 3.44e-5, 6.18e-2, 4.18e-1, 2.58e-2, 4.75e-2, 2.51e-2, 33.3]
-    elif herg_model == 'kemp' or herg_model == '2024_Joey_sis_25C':
+    else:
         herg_vals = []
 
     # TODO currently hardcoded to get number of sweeps
     if max_time != 15e3 and herg_model != '2024_Joey_sis_25C':
         swps = int(np.floor(250000/max_time))
-    elif max_time != 25350 and prot != "protocols/3_drug_protocol_23_10_24.mmt" and prot != "protocols/3_drug_protocol_14_11_24.mmt":
+    elif prot == "protocols/gary_manual.mmt":
+        swps = 9
+    elif max_time != 25350 and prot != "protocols/3_drug_protocol_23_10_24.mmt" and prot != "protocols/3_drug_protocol_14_11_24.mmt" and prot != "protocols/3_drug_protocol_28_11_24.mmt":
         swps = sweeps
 
     # define protocol
@@ -87,8 +89,8 @@ def generate_data(herg_model, drug_vals, prot, sd, max_time, bounds, m_sel, conc
             X = np.append(X, after[win])
 
         if notrecord:
-            Y_full = np.append(Y_full, control[:-20000])
-            X_full = np.append(X_full, after[:-20000])
+            Y_full = np.append(Y_full, control[:-14000])
+            X_full = np.append(X_full, after[:-14000])
         else:
             Y_full = np.append(Y_full, control)
             X_full = np.append(X_full, after)
@@ -102,8 +104,8 @@ def generate_data(herg_model, drug_vals, prot, sd, max_time, bounds, m_sel, conc
                 X = np.append(X, after[win])
                 Y = np.append(Y, control[win])
             if notrecord:
-                Y_full = np.append(Y_full, control[:-20000])
-                X_full = np.append(X_full, after[:-20000])
+                Y_full = np.append(Y_full, control[:-14000])
+                X_full = np.append(X_full, after[:-14000])
             else:
                 Y_full = np.append(Y_full, control)
                 X_full = np.append(X_full, after)

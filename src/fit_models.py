@@ -34,6 +34,8 @@ parser.add_argument('-t', type=float, default=15e3, help='Max time')
 parser.add_argument('-b', type=parse_list_of_lists, default="[[1e3, 11e3]]", help='Protocol window(s) of interest')
 parser.add_argument('-c', type = str, help='Drug compound string')
 parser.add_argument('-d', action='store_true', help='Enable dual fitting of Milnes and optimal protocol data')
+parser.add_argument('-e', action='store_true', help='Enable fitting of 2x optimal protocol data')
+parser.add_argument('-a', action='store_true', help='Enable fitting of Milnes and 2x optimal protocol data')
 args = parser.parse_args()
 
 def get_pars(model_num):
@@ -45,7 +47,7 @@ def get_pars(model_num):
             model = classes.ConcatMilnesModel(f'm{model_num}', protocol, times,
                                           win, conc, param_dict)
             if args.d:
-                if protocol != "protocols/3_drug_protocol_23_10_24.mmt" and protocol != "protocols/3_drug_protocol_14_11_24.mmt":
+                if protocol != "protocols/3_drug_protocol_23_10_24.mmt" and protocol != "protocols/3_drug_protocol_14_11_24.mmt" and protocol != "protocols/3_drug_protocol_28_11_24.mmt":
                     model_m = classes.ConcatMilnesModel(f'm{model_num}', 'protocols/Milnes_Phil_Trans.mmt', times_m,
                                           win_m, conc, param_dict)
                 else:
@@ -61,12 +63,20 @@ def get_pars(model_num):
             model = classes.ConcatMilnesModel(f'sis-m{model_num}', protocol, times,
                                           win, conc, param_dict)
             if args.d:
-                if protocol != "protocols/3_drug_protocol_23_10_24.mmt" and protocol != "protocols/3_drug_protocol_14_11_24.mmt":
+                if protocol != "protocols/3_drug_protocol_23_10_24.mmt" and protocol != "protocols/3_drug_protocol_14_11_24.mmt" and protocol != "protocols/3_drug_protocol_28_11_24.mmt":
                     model_m = classes.ConcatMilnesModel(f'sis-m{model_num}', 'protocols/Milnes_Phil_Trans.mmt', times_m,
                                           win_m, conc, param_dict)
                 else:
                     model_m = classes.ConcatMilnesModel(f'sis-m{model_num}', 'protocols/Milnes_16102024_MA1_FP_RT.mmt', times_m,
                                           win_m, conc, param_dict)
+            if args.e:
+                model_m = classes.ConcatMilnesModel(f'sis-m{model_num}', 'protocols/3_drug_protocol_14_11_24.mmt', times_m,
+                                          win_m, conc, param_dict)
+            if args.a:
+                model_m = classes.ConcatMilnesModel(f'sis-m{model_num}', 'protocols/Milnes_16102024_MA1_FP_RT.mmt', times_m,
+                                          win_m, conc, param_dict)
+                model_o = classes.ConcatMilnesModel(f'sis-m{model_num}', 'protocols/3_drug_protocol_14_11_24.mmt', times_o,
+                                          win_o, conc, param_dict)
         # Load data
         u = np.loadtxt(
             f'{outdir}/fb_synthetic_conc_{conc}.csv',
@@ -76,7 +86,7 @@ def get_pars(model_num):
         concat_time = u[:, 0]
         concat_milnes = u[:, 1]
         if args.d:
-            if protocol != "protocols/3_drug_protocol_23_10_24.mmt" and protocol != "protocols/3_drug_protocol_14_11_24.mmt":
+            if protocol != "protocols/3_drug_protocol_23_10_24.mmt" and protocol != "protocols/3_drug_protocol_14_11_24.mmt" and protocol != "protocols/3_drug_protocol_28_11_24.mmt":
                 # Load data
                 u_m = np.loadtxt(
                     f'{outdir.rsplit("/",1)[0]}/fb_synthetic_conc_{conc}.csv',
@@ -90,7 +100,7 @@ def get_pars(model_num):
                     delimiter=',',
                     skiprows=1
                 )
-            elif protocol == "protocols/3_drug_protocol_14_11_24.mmt":
+            elif protocol == "protocols/3_drug_protocol_14_11_24.mmt" or protocol == "protocols/3_drug_protocol_28_11_24.mmt":
                 # Load data
                 u_m = np.loadtxt(
                     f'outputs_real_30102024_MA_FP_RT/{args.c}/fb_synthetic_conc_{conc}.csv',
@@ -99,12 +109,41 @@ def get_pars(model_num):
                 )
             concat_time_m = u_m[:, 0]
             concat_milnes_m = u_m[:, 1]
+        if args.e:
+            # Load data
+            u_m = np.loadtxt(
+                f'outputs_real_20241114_MA_FP_RT/{args.c}/fb_synthetic_conc_{conc}.csv',
+                delimiter=',',
+                skiprows=1
+            )
+            concat_time_m = u_m[:, 0]
+            concat_milnes_m = u_m[:, 1]
+        if args.a:
+            # Load data
+            u_m = np.loadtxt(
+                f'outputs_real_30102024_MA_FP_RT/{args.c}/fb_synthetic_conc_{conc}.csv',
+                delimiter=',',
+                skiprows=1
+            )
+            concat_time_m = u_m[:, 0]
+            concat_milnes_m = u_m[:, 1]
+            # Load data
+            u_o = np.loadtxt(
+                f'outputs_real_20241114_MA_FP_RT/{args.c}/fb_synthetic_conc_{conc}.csv',
+                delimiter=',',
+                skiprows=1
+            )
+            concat_time_o = u_o[:, 0]
+            concat_milnes_o = u_o[:, 1]
         # Create single output problem
         problem = pints.SingleOutputProblem(model, concat_time, concat_milnes)
         likelihoods.append(classes.NormalRatioLogLikelihood(problem, mu_y))
-        if args.d:
+        if args.d or args.e or args.a:
             problem_m = pints.SingleOutputProblem(model_m, concat_time_m, concat_milnes_m)
             likelihoods.append(classes.NormalRatioLogLikelihood(problem_m, mu_y_m))
+        if args.a:
+            problem_o = pints.SingleOutputProblem(model_o, concat_time_o, concat_milnes_o)
+            likelihoods.append(classes.NormalRatioLogLikelihood(problem_o, mu_y_o))
 
     if len(likelihoods) > 1:
         f = pints.SumOfIndependentLogPDFs(likelihoods)
@@ -113,7 +152,7 @@ def get_pars(model_num):
     bounds = boundaries.Boundaries(model_num, fix_hill=False, likelihood=True)
 
     # Fix random seed for reproducibility
-    np.random.seed(101)
+    np.random.seed(100)
     # Transformation
     if model_num in ['12', '13']:
         transform = pints.ComposedTransformation(
@@ -134,7 +173,7 @@ def get_pars(model_num):
         opt = pints.OptimisationController(
                 f, q0, boundaries=bounds, transformation=transform, method=pints.CMAES)
         opt.set_max_iterations(None)
-        opt.set_max_unchanged_iterations(iterations=100, threshold=100)
+        opt.set_max_unchanged_iterations(iterations=200, threshold=1e-3)
         # Run optimisation
         try:
             with np.errstate(all='ignore'): # Tell numpy not to issue warnings
@@ -191,7 +230,7 @@ if __name__ == "__main__":
     for condition in conditions:
         win |= condition
     if args.d:
-        if protocol != "protocols/3_drug_protocol_23_10_24.mmt" and protocol != "protocols/3_drug_protocol_14_11_24.mmt":
+        if protocol != "protocols/3_drug_protocol_23_10_24.mmt" and protocol != "protocols/3_drug_protocol_14_11_24.mmt" and protocol != "protocols/3_drug_protocol_28_11_24.mmt":
             times_m = np.arange(0, 15e3, steps)
             conditions_m = []
             for b in [[1e3, 11e3]]:
@@ -204,26 +243,62 @@ if __name__ == "__main__":
         win_m = np.zeros_like(conditions_m[0], dtype=bool)
         for condition in conditions_m:
              win_m |= condition
+    if args.e:
+        times_m = np.arange(0, 12.3e3, steps)
+        conditions_m = []
+        for b in [[1000,3900],[5200,8300]]:
+            conditions_m.append(((times_m >= b[0]) & (times_m < b[-1])))
+        win_m = np.zeros_like(conditions_m[0], dtype=bool)
+        for condition in conditions_m:
+             win_m |= condition
+    if args.a:
+        times_m = np.arange(0, 15.35e3, steps)
+        conditions_m = []
+        for b in [[1.35e3, 11.35e3]]:
+            conditions_m.append(((times_m >= b[0]) & (times_m < b[-1])))
+        times_o = np.arange(0, 12.3e3, steps)
+        conditions_o = []
+        for b in [[1000,3900],[5200,8300]]:
+            conditions_o.append(((times_o >= b[0]) & (times_o < b[-1])))
+        win_m = np.zeros_like(conditions_m[0], dtype=bool)
+        win_o = np.zeros_like(conditions_o[0], dtype=bool)
+        for condition in conditions_m:
+             win_m |= condition
+        for condition in conditions_o:
+             win_o |= condition
+
     # read fitted splines
     dfy = pd.read_csv(f"{outdir}/synth_Y_fit.csv")
     mu_y = np.array(dfy['0'])
     if args.d:
         # read fitted splines
-        if protocol != "protocols/3_drug_protocol_23_10_24.mmt" and protocol != "protocols/3_drug_protocol_14_11_24.mmt":
+        if protocol != "protocols/3_drug_protocol_23_10_24.mmt" and protocol != "protocols/3_drug_protocol_14_11_24.mmt" and protocol != "protocols/3_drug_protocol_28_11_24.mmt":
             dfy_m = pd.read_csv(f"{outdir.rsplit('/',1)[0]}/synth_Y_fit.csv")
             mu_y_m = np.array(dfy_m['0'])
         elif protocol == "protocols/3_drug_protocol_23_10_24.mmt":
             dfy_m = pd.read_csv(f"outputs_real_16102024_MA1_FP_RT/{args.c}/synth_Y_fit.csv")
             mu_y_m = np.array(dfy_m['0'])
-        elif protocol == "protocols/3_drug_protocol_14_11_24.mmt":
+        elif protocol == "protocols/3_drug_protocol_14_11_24.mmt" or protocol == "protocols/3_drug_protocol_28_11_24.mmt":
             dfy_m = pd.read_csv(f"outputs_real_30102024_MA_FP_RT/{args.c}/synth_Y_fit.csv")
             mu_y_m = np.array(dfy_m['0'])
+    if args.e:
+        dfy_m = pd.read_csv(f"outputs_real_20241114_MA_FP_RT/{args.c}/synth_Y_fit.csv")
+        mu_y_m = np.array(dfy_m['0'])
+    if args.a:
+        dfy_m = pd.read_csv(f"outputs_real_30102024_MA_FP_RT/{args.c}/synth_Y_fit.csv")
+        mu_y_m = np.array(dfy_m['0'])
+        dfy_o = pd.read_csv(f"outputs_real_20241114_MA_FP_RT/{args.c}/synth_Y_fit.csv")
+        mu_y_o = np.array(dfy_o['0'])
     # fit model
     pars, sc = get_pars(model_num)
     print(f'{model_num}: {pars}, {sc}')
     print(args)
     if args.d:
         savedir = outdir + "/fits_milnes_and_opt"
+    elif args.e:
+        savedir = outdir + "/fits_two_opt"
+    elif args.a:
+        savedir = outdir + "/fits_all"
     else:
         savedir = outdir + "/fits"
     if not os.path.exists(savedir):

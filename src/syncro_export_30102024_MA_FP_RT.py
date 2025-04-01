@@ -77,20 +77,20 @@ def main(output_folder, drug, concs, cols):
      (QCdf_fb['Rseries']>1*10**6) & (QCdf_fb['Rseries']<25*10**6)]
 
     pulse = [2700, 22700]
-    sweeps_oi = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+    sweeps_oi = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     for c_j, conc in enumerate(concs):
             ### leak correct
             col = cols[c_j]
             curr_conc = {}
             b1all = {}
-            b2all = {}
             gradcall = {}
             for well in currents.keys():
-                if well[1:] in col and list(QCdffilt[QCdffilt['sweep'].isin(sweeps_oi)]['well']).count(well) == 14 and list(QCdffilt_fb[QCdffilt_fb['sweep'].isin([0])]['well']).count(well) == 1:
+                if well[1:] in col and list(QCdffilt[QCdffilt['sweep'].isin(sweeps_oi)]['well']).count(well) == 11 and list(QCdffilt_fb[QCdffilt_fb['sweep'].isin([0])]['well']).count(well) == 1:
                     curr_conc[well] = {}
                     b1 = []
-                    b2 = []
                     final_c = []
+                    (b1i, b2i), ilki = lc.fit_linear_leak(currents_fb[well][0], voltages, ts, 1700, 2500)
+                    curr_conc[well][0] = currents_fb[well][0]-ilki
                     for i in sweeps_oi:
                         if i == 6:
                             (b1i, b2i), ilki = lc.fit_linear_leak(currents[well][0], voltages, ts, 1700, 2500)
@@ -98,47 +98,51 @@ def main(output_folder, drug, concs, cols):
                             (b1i, b2i), ilki = lc.fit_linear_leak(currents[well][7], voltages, ts, 1700, 2500)
                         curr_conc[well][i] = currents[well][i]-ilki
                         b1 += [b1i]
-                        b2 += [b2i]
-                    (b1i, b2i), ilki = lc.fit_linear_leak(currents_fb[well][0], voltages, ts, 1700, 2500)
-                    curr_conc[well][0] = currents_fb[well][0]-ilki
-                    b1 += [b1i]
-                    b2 += [b2i]
-                    b1all[well] = b1
-                    b2all[well] = b2
-                    for i in [0, 1, 2, 3, 4, 5, 6]:
+                    for i in [2, 3, 4, 5, 6]:
                         (b1i, b2i), ilki = lc.fit_linear_leak(currents[well][0], voltages, ts, 1700, 2500)
                         cont_curr = currents[well][i]-ilki-curr_conc[well][0]
-                        x_hat = fit_splines(ts[pulse[0]:pulse[1]], cont_curr[pulse[0]:pulse[1]], n_order = 4, lambda_ = 10**11, knots = 6)
+                        x_hat = fit_splines(ts[2700:22700], cont_curr[2700:22700], n_order = 4, lambda_ = 10**11, knots = 6)
                         final_c.append([x_hat[-1]])
-                    gradc, x_fit = fit_lin_reg([[i] for i in [0, 1, 2, 3, 4, 5, 6]], final_c)
-                    gradcall[well] = gradc
+                    gradc, x_fit = fit_lin_reg([[i] for i in [2, 3, 4, 5, 6]], final_c)
+                    (b1i, b2i), ilki = lc.fit_linear_leak(currents_fb[well][0], voltages, ts, 1700, 2500)
+                    curr_conc[well][0] = currents_fb[well][0]-ilki
+                    flat_section = curr_conc[well][6][:1600] - curr_conc[well][0][:1600]
+                    noise = np.var(flat_section)
+                    b1 += [b1i]
+                    gradcall[well] = gradc[0]/noise
+                    b1all[well] = [b/noise for b in b1]
             ### additional QC
-            wells_filt = ['G18','L18','M18','A20','E21','C22','L22','E24','K24','P24',
-                          'N01','N17','G02','C03','G03','L04','O06','P06','C06','A07',
-                          'B07','L07','M07','O07','O08','L10','A11','J11','M12','D14',
-                          'O14','M17','N04','B14']
+            wells_filt = ['A07','A11','B07','B14','C22','D14','E05','E21','E24','G18',
+                          'J11','J17','K02','K24','L18','L22','M19','N04','N11','N13',
+                          'A17','A24','B03','B04','B13','B16','B24','C03','C06','C07',
+                          'C11','D01','E09','E13','E18','E19','F09','F16','G02','G15',
+                          'G16','G17','H02','H10','H17','I01','I09','I11','I13','J04',
+                          'J09','J22','J24','K04','K05','K18','L03','L15','L24','M18',
+                          'M12','M20','M22','M24','N01','N02','N05','O08','O11','P01',
+                          'P11','P13','P15','P24','F01','A15']
             j = 0
             for well in list(curr_conc.keys()):
                 if well not in wells_filt:
-                    if gradcall[well][0] > 1.5:
+                    if gradcall[well] > 0.1 or gradcall[well] < -0.1:
                         if well not in wells_filt:
                             wells_filt+=[well]
-                    if min(b1all[well]) <= -0.5:
-                        if well not in wells_filt:
-                            wells_filt+=[well]
-                    if max(b1all[well]) >= 100:
+                    if min(b1all[well]) <= -0.1:
                         if well not in wells_filt:
                             wells_filt+=[well]
                     j+=1
                     for i in sweeps_oi:
                         if i == 6:
-                            if get_snr(curr_conc[well], i)>150:
+                            if get_snr(curr_conc[well], i)>100:
                                 if well not in wells_filt:
                                     wells_filt+=[well]
                         else:
-                            if get_snr(curr_conc[well], i)>1000:
+                            if get_snr(curr_conc[well], i)>200:
                                 if well not in wells_filt:
                                     wells_filt+=[well]
+
+            for i in ['C05', 'P07', 'K10', 'I12', 'M16', 'P20', 'F22', 'G21', 'C23', 'F23']:
+                if i in wells_filt:
+                    wells_filt.remove(i)
 
             fig,ax=plt.subplots(figsize = (10, 4))
             lc_fb_all = []
@@ -170,11 +174,11 @@ def main(output_folder, drug, concs, cols):
                     lc_fb_all.append(lc_fbs)
                     lc_fb_full_all.append(lc_fb_full)
                     controls_all.append(controls)
-            ax.plot(timesall, np.average(lc_fb_all, axis=0))
+            ax.plot(timesall, np.average(lc_fb_all, axis=0), linewidth = 0.01)
             ax.set_ylabel('prop. open')
             ax.set_ylim(bottom = -2, top = 3)
             ax.axhline(0, color = 'k', linestyle = '--', linewidth = 0.5, alpha = 0.5)
-            ax.set_title(f'{conc}nM {drug} sweeps 1-13 ({np.shape(lc_fb_all)[0]} wells)')
+            ax.set_title(f'{conc}nM {drug} sweeps 1-10 ({np.shape(lc_fb_all)[0]} wells)')
             fig.suptitle('Leak-corrected data w/ full block subtraction', fontsize=20)
             plt.tight_layout()
             plt.savefig(f'{output_folder}/{conc}nM_block.png')
