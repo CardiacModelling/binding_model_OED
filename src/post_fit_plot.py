@@ -43,7 +43,7 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder, swps):
     elif herg == '2024_Joey_sis_25C' and prot != "protocols/3_drug_protocol_23_10_24.mmt" and prot != "protocols/3_drug_protocol_14_11_24.mmt" and prot != "protocols/3_drug_protocol_28_11_24.mmt" and prot != "protocols/gary_manual.mmt":
         swp_len=[3340, 3330, 10e3]
     elif prot == "protocols/3_drug_protocol_28_11_24.mmt":
-        swp_len=3654
+        swp_len=691
     elif prot == "protocols/gary_manual.mmt":
         swp_len=2400
     else:
@@ -88,7 +88,10 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder, swps):
     for m in all_model_nums:
         if m in model_nums:
             drug_vals = drug_fit_pars[m]
-            synth_Xfit, synth_Yfit, synth_Zfit, _, _, _, ts, _ = funcs.generate_data(herg, drug_vals, prot, 0, max_time, bounds, m, concs, swps, notrecord=True)
+            if herg == 'temp_dep':
+                synth_Xfit, synth_Yfit, synth_Zfit, _, _, _, ts, _ = funcs.generate_data(herg, drug_vals, prot, 0, max_time, bounds, m, concs, swps, notrecord=True, td=True)
+            else:
+                synth_Xfit, synth_Yfit, synth_Zfit, _, _, _, ts, _ = funcs.generate_data(herg, drug_vals, prot, 0, max_time, bounds, m, concs, swps, notrecord=True)
             synth_Zfit_all[m] = synth_Zfit
             synth_Xfit_all[m] = synth_Xfit
 
@@ -97,7 +100,7 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder, swps):
     for i in np.arange(0, swps):
         s_j = 0
         for b in bounds:
-            if herg != '2024_Joey_sis_25C' and max_time != 15e3:
+            if herg != '2024_Joey_sis_25C' and max_time != 15e3 and herg != 'temp_dep' and herg != '2025_Frankie_staircase_25C':
                 xticks.append(b[0] + swp_len[s_j]/2 + i*len(synth_Yfit)/(2*swps))
                 s_j+=1
             elif herg != '2024_Joey_sis_25C' or max_time == 25350 or max_time == 20334 or max_time == 13400:
@@ -191,8 +194,8 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder, swps):
     for j, m in enumerate(all_model_nums):
         if m in model_nums:
             fig = plt.figure(figsize=(14, 7))
-            inner = gridspec.GridSpec(1, 4, wspace=0.3)
-            for i, lim in zip(np.arange(0, 4), xlims):
+            inner = gridspec.GridSpec(1, 10, wspace=0.3)
+            for i, lim in zip(np.arange(0, 10), xlims):
                 ax = plt.Subplot(fig, inner[i])
                 for conc, col in zip(concs, colrs):
                     dfconc = pd.read_csv(f"{output_folder}/fb_synthetic_conc_{conc}_full.csv")
@@ -297,7 +300,7 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder, swps):
             ### Milnes = 171636.8
             ### 20241114 = 217618.7
             ### 20241128 = 146335.1
-            ax.axhline(np.max(drug_fit_score)-146335.1, color = 'b', linestyle = '--', alpha = 0.5, label = 'discrepancy threshold below max.')
+            #ax.axhline(np.max(drug_fit_score)-146335.1, color = 'b', linestyle = '--', alpha = 0.5, label = 'discrepancy threshold below max.')
             minx = np.min(drug_fit_score)
             maxx = np.max(drug_fit_score)
             #ax.set_ylim(bottom = minx-100000, top = maxx+100000)
@@ -344,7 +347,7 @@ def main(model_nums, prot, max_time, bounds, herg, output_folder, swps):
                 plt.savefig(f"{output_folder}/parameter_comparison.png", dpi=600, bbox_inches='tight')
 
 if __name__ == "__main__":
-    if args.e != '2024_Joey_sis_25C':
+    if args.e != '2024_Joey_sis_25C' and args.e != 'temp_dep' and args.e != '2025_Frankie_staircase_25C':
         concs = parameters.drug_concs[args.d]
     elif args.d == 'bepridil':
         concs = [30, 100, 300]

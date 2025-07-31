@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=5g
-#SBATCH --time=20:00:00
+#SBATCH --time=00:10:00
 
 module use $HOME/.local/easybuild/modules/all
 module load gcc-uoneasy/12.3.0
@@ -16,14 +16,14 @@ conda activate env
 compound=$1
 
 # Set output directory
-dir="outputs_real_20241128_MA_FP_RT/${compound}"
+dir="outputs_real_20250702_MA_FP_RT/${compound}"
 
 # Load in real data and save
-python src/syncro_export_20241128_MA_FP_RT.py -o ${dir} -d ${compound}
+python src/syncro_export_20250702_MA_FP_RT.py -o ${dir} -d ${compound}
 
 # Fit splines to new synthetic data control sweeps
 echo "Fitting splines..."
-python src/fit_spline.py -i ${dir} -o ${dir} -m "20241128_MA_FP_RT" -l 1e8
+python src/fit_spline.py -i ${dir} -o ${dir} -m "milnes real" -l 5e10
 
 ### use -l 5e10 for Milnes (milnes real)
 ### use -l 5e8 for 20241114_MA_FP_RT
@@ -37,21 +37,23 @@ is_job_running() {
 }
 
 # Define models and fitting reps
-herg='2024_Joey_sis_25C'
+#herg='2024_Joey_sis_25C'
+#herg='temp_dep'
+herg='2025_Frankie_staircase_25C'
 models="['1','2','2i','3','4','5','5i','6','7','8','9','10','11','12','13']"
-fit_reps=10
+fit_reps=1
 
 # Convert models string for bash looping
 models_bash=(${models//[\[\]\'\,]/ })
 
 # Fit models to synthetic data
-JOB_ID=$(sbatch src/run_multi_fit_real.sh ${dir} ${compound} ${fit_reps} ${herg} "${models_bash[@]}" | awk '{print $4}')
+#JOB_ID=$(sbatch src/run_multi_fit_real.sh ${dir} ${compound} ${fit_reps} ${herg} "${models_bash[@]}" | awk '{print $4}')
 
 # Wait for the job to complete
-while is_job_running; do
-    echo "Waiting for fitting job $JOB_ID to complete..."
-    sleep 60
-done
+#while is_job_running; do
+#    echo "Waiting for fitting job $JOB_ID to complete..."
+#    sleep 60
+#done
 
 #ttime=32000
 #ttime=25350

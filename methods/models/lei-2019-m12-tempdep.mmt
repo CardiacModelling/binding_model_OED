@@ -1,0 +1,130 @@
+[[model]]
+author: Myokit CellML 1 API
+name: Lei_2019_37C_IKr_Model12
+desc: "Lei et al. 2019 physiological model with Li et al. 2017 binding model."
+# Initial values
+ikr.O = 0
+ikr.I = 0
+ikr.CI = 0
+ikr.OD = 0
+ikr.ID = 0
+ikr.CD = 0
+ikr.C = 1
+#ikr.D = 0
+
+[ikr]
+use membrane.V
+
+IKr = p9 * O * (V - nernst.EK)
+    in [pA]
+    oxmeta: membrane_rapid_delayed_rectifier_potassium_current
+
+k1 = (physical_constants.kb/physical_constants.h)*(physical_constants.T)*exp((del_S12/physical_constants.R) - 
+    (del_H12/(physical_constants.R*physical_constants.T)) + ((ze12*physical_constants.F*membrane.V)/(physical_constants.R*physical_constants.T)) + 
+    D12*membrane.V)
+k2 = (physical_constants.kb/physical_constants.h)*(physical_constants.T)*exp((del_S21/physical_constants.R) - 
+    (del_H21/(physical_constants.R*physical_constants.T)) + ((ze21*physical_constants.F*membrane.V)/(physical_constants.R*physical_constants.T)) + 
+    D21*membrane.V)
+k3 = (physical_constants.kb/physical_constants.h)*(physical_constants.T)*exp((del_S41/physical_constants.R) - 
+    (del_H41/(physical_constants.R*physical_constants.T)) + ((ze41*physical_constants.F*membrane.V)/(physical_constants.R*physical_constants.T)) + 
+    D41*membrane.V)
+k4 = (physical_constants.kb/physical_constants.h)*(physical_constants.T)*exp((del_S14/physical_constants.R) - 
+    (del_H14/(physical_constants.R*physical_constants.T)) + ((ze14*physical_constants.F*membrane.V)/(physical_constants.R*physical_constants.T)) + 
+    D14*membrane.V)
+
+del_S12 = 3.89543e5 [mJ/mol/K]
+    in [mJ/K/mol]
+del_S21 = -2.35457e5 [mJ/mol/K]
+    in [mJ/K/mol]
+del_S41 = 7.53932e4 [mJ/mol/K]
+    in [mJ/K/mol]
+del_S14 = 1.25715e5 [mJ/mol/K]
+    in [mJ/K/mol]
+del_H12 = 1.9533e8 [mJ/mol]
+    in [mJ/mol]
+del_H21 = 1.1514e7 [mJ/mol]
+    in [mJ/mol]
+del_H41 = 8.40174e7 [mJ/mol]
+    in [mJ/mol]
+del_H14 = 1.05487e8 [mJ/mol]
+    in [mJ/mol]
+ze12 = 9.59193
+ze21 = 9.98987
+ze41 = -1.85611
+ze14 = -2.71481
+D12 = -0.293601 [mV]
+    in [mV]
+D21 = -0.435358 [mV]
+    in [mV]
+D41 = 0.0931319 [mV]
+    in [mV]
+D14 = 0.0754196 [mV]
+    in [mV]
+
+p9 = 31 [nS]
+    in [nS]
+    oxmeta: membrane_rapid_delayed_rectifier_potassium_current_conductance
+
+dot(O) = ku * OD - ku * emax * O + k1 * C + k4 * I - (k2 + k3) * O
+dot(I) = psi * ID - ku * emax * I + k1 * CI + k3 * O - (k2 + k4) * I
+dot(CI) = k2 * I + k3 * C - (k1 + k4) * CI
+dot(OD) = ku * emax * O + kt * X * CD - (ku + kt) * OD
+dot(CD) = kt * OD + kt * ID - (kt * X + kt * X) * CD
+dot(ID) = ku * emax * I + kt * X * CD - (psi + kt) * ID
+dot(C) = - k3 * C + k4 * CI - k1 * C + k2 * O
+#C = 1 - O - I - CI - OD - ID - CD
+
+#dot(D) = 0
+D = 0
+    in [nM]
+
+emax = kmax * D ^ hill / (D ^ hill + halfmax)
+X = 1 / (1 + exp(-(V + vhalf) / 6.789))
+psi = ku * k3 / k4
+
+kmax = 5
+ku = 1e-03
+hill = 1
+halfmax = 0.15 # EC50^hill
+vhalf = 8
+kt = 3.5e-05 #fixed
+
+
+[engine]
+time = 0 bind time
+    in [ms]
+pace = 0 bind pace
+
+[membrane]
+V = engine.pace
+    desc: membrane potential
+    in [mV]
+
+[extracellular]
+ko = 4 [mM]
+    in [mM]
+    oxmeta: extracellular_potassium_concentration
+    label K_o
+
+[intracellular]
+ki = 140 [mM]
+    in [mM]
+    oxmeta: intracellular_potassium_concentration
+    label K_i
+
+[physical_constants]
+F = 96485 [C/mol]
+    in [C/mol]
+R = 8314 [mJ/mol/K]
+    in [mJ/mol/K]
+T = 298.15 [K]
+    in [K]
+kb = 1.380649e-20 [mJ/K]
+    in [mJ/K]
+h = 6.62607015e-28 [mJ/mHz]
+    in [mJ/mHz]
+
+[nernst]
+EK = physical_constants.R * physical_constants.T / physical_constants.F * log(extracellular.ko / intracellular.ki)
+    in [mV]
+    oxmeta: potassium_reversal_potential

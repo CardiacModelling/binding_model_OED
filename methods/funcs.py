@@ -1,26 +1,30 @@
 import pandas as pd
 import numpy as np
-from . import herg_pars, sweeps, steps
+from . import herg_pars, sweeps, steps, T_default
 from .models import Model
 import myokit
 
 ### Function for generating synthetic data
-def generate_data(herg_model, drug_vals, prot, sd, max_time, bounds, m_sel, concs, swps, notrecord=False):
+def generate_data(herg_model, drug_vals, prot, sd, max_time, bounds, m_sel, concs, swps, notrecord=False, td=False):
     '''
     function for generating synthetic data
     '''
     # get herg parameters
     if herg_model == '2019_37C':
         herg_vals = [2.07e-3, 7.17e-2, 3.44e-5, 6.18e-2, 4.18e-1, 2.58e-2, 4.75e-2, 2.51e-2, 33.3]
+    elif herg_model == '2025_Frankie_staircase_25C':
+        herg_vals = [6.11961222e-04, 6.00945457e-02, 2.95164804e-05, 4.48035995e-02, 9.29477393e-02, 1.71121263e-02, 5.81400143e-03, 2.73949007e-02, 4.38869029e+01]
     else:
         herg_vals = []
 
     # TODO currently hardcoded to get number of sweeps
-    if max_time != 15e3 and herg_model != '2024_Joey_sis_25C':
+    if max_time != 15e3 and herg_model != '2024_Joey_sis_25C' and herg_model != 'temp_dep' and herg_model != '2025_Frankie_staircase_25C':
         swps = int(np.floor(250000/max_time))
     elif prot == "protocols/gary_manual.mmt":
         swps = 9
     elif max_time != 25350 and prot != "protocols/3_drug_protocol_23_10_24.mmt" and prot != "protocols/3_drug_protocol_14_11_24.mmt" and prot != "protocols/3_drug_protocol_28_11_24.mmt":
+        swps = sweeps
+    else:
         swps = sweeps
 
     # define protocol
@@ -48,7 +52,7 @@ def generate_data(herg_model, drug_vals, prot, sd, max_time, bounds, m_sel, conc
         Y_full = []
 
         # load model (TODO currently hardcoded based on which model)
-        if herg_model != 'kemp' and herg_model != '2024_Joey_sis_25C':
+        if herg_model != 'kemp' and herg_model != '2024_Joey_sis_25C' and herg_model != 'temp_dep':
             model = Model(f'm{m_sel}',
                             protocol,
                             parameters=['binding'],
@@ -66,12 +70,21 @@ def generate_data(herg_model, drug_vals, prot, sd, max_time, bounds, m_sel, conc
                             protocol,
                             parameters=['binding'],
                             analytical=True)
+        elif herg_model == 'temp_dep':
+            model = Model(f'm{m_sel}-td',
+                            protocol,
+                            parameters=['binding'],
+                            analytical=True)
         # fix kt if necessary
         if m_sel in ['12', '13']:
             model.fix_kt()
 
         # run control
         model.set_dose(0.0)
+        if herg_model == 'temp_dep':
+            model.set_temperature(drug_vals[-4])
+        else:
+            model.set_temperature(T_default)
         z = np.ones(model.n_parameters())
         control = model.simulate(z, times)
         if sd != 0:
@@ -79,7 +92,11 @@ def generate_data(herg_model, drug_vals, prot, sd, max_time, bounds, m_sel, conc
 
         # run drug sweep
         model.set_dose(conc)
-        after = model.simulate(drug_vals, times)
+        if herg_model == 'temp_dep':
+            model.set_temperature(drug_vals[-3])
+            after = model.simulate(drug_vals[:-4], times)
+        else:
+            after = model.simulate(drug_vals[:-1], times)
 
         if sd != 0:
             after = after + np.random.normal(0,sd,len(after))
@@ -89,23 +106,30 @@ def generate_data(herg_model, drug_vals, prot, sd, max_time, bounds, m_sel, conc
             X = np.append(X, after[win])
 
         if notrecord:
-            Y_full = np.append(Y_full, control[:-14000])
-            X_full = np.append(X_full, after[:-14000])
+            Y_full = np.append(Y_full, control[:-20000])
+            X_full = np.append(X_full, after[:-20000])
         else:
             Y_full = np.append(Y_full, control)
             X_full = np.append(X_full, after)
 
         # run multiple sweeps
         for i in range(1, swps):
-            after = model.simulate(drug_vals, times, reset = False)
+            #if herg_model == 'temp_dep':
+            #    model.set_fix_parameters({'physical_constants.T':drug_vals[-3]+drug_vals[-2]*i})
+            #after = model.simulate(drug_vals[:-4], times, reset = False)
+            if herg_model == 'temp_dep':
+                model.set_temperature(drug_vals[-3] + np.log(i+1)*drug_vals[-2])
+                after = model.simulate(drug_vals[:-4], times)
+            else:
+                after = model.simulate(drug_vals[:-1], times, reset = False)
             if sd != 0:
                 after = after + np.random.normal(0,sd,len(after))
             for win in wins:
                 X = np.append(X, after[win])
                 Y = np.append(Y, control[win])
             if notrecord:
-                Y_full = np.append(Y_full, control[:-14000])
-                X_full = np.append(X_full, after[:-14000])
+                Y_full = np.append(Y_full, control[:-20000])
+                X_full = np.append(X_full, after[:-20000])
             else:
                 Y_full = np.append(Y_full, control)
                 X_full = np.append(X_full, after)

@@ -43,6 +43,21 @@ _model_files = {
     'm11': 'lei-2019-m11.mmt',
     'm12': 'lei-2019-m12.mmt',  # Li et al. 2017 binding model
     'm13': 'lei-2019-m13.mmt',
+    'm1-td': 'lei-2019-m1-tempdep.mmt',
+    'm2-td': 'lei-2019-m2-tempdep.mmt',
+    'm2i-td': 'lei-2019-m2i-tempdep.mmt',
+    'm3-td': 'lei-2019-m3-tempdep.mmt',
+    'm4-td': 'lei-2019-m4-tempdep.mmt',
+    'm5-td': 'lei-2019-m5-tempdep.mmt',
+    'm5i-td': 'lei-2019-m5i-tempdep.mmt',
+    'm6-td': 'lei-2019-m6-tempdep.mmt',
+    'm7-td': 'lei-2019-m7-tempdep.mmt',
+    'm8-td': 'lei-2019-m8-tempdep.mmt',
+    'm9-td': 'lei-2019-m9-tempdep.mmt',
+    'm10-td': 'lei-2019-m10-tempdep.mmt',
+    'm11-td': 'lei-2019-m11-tempdep.mmt',
+    'm12-td': 'lei-2019-m12-tempdep.mmt',
+    'm13-td': 'lei-2019-m13-tempdep.mmt',
     'sis-m1': 'lei-2019-m1RTsis.mmt',
     'sis-m2': 'lei-2019-m2RTsis.mmt',
     'sis-m2i': 'lei-2019-m2iRTsis.mmt',
@@ -194,7 +209,7 @@ class Model(pints.ForwardModel):
                     'Analytical simulation can only be used with'
                     + ' myokit.Protocol')
             model.get('membrane.V').set_label('membrane_potential')
-            if self._model_name[0] == 'm':
+            if self._model_name[0] == 'm' and self._model_name[-1] != 'd':
                 self.m = markov.LinearModel.from_component(
                     #model.get('ikr'),
                     model.get(self._current.split('.')[0]),
@@ -202,11 +217,18 @@ class Model(pints.ForwardModel):
                                                                 'ikr.p5', 'ikr.p6', 'ikr.p7', 'ikr.p8', 'ikr.p9'],
                     current=self._current,
                 )
+            elif self._model_name[-1] == 'd':
+                self.m = markov.LinearModel.from_component(
+                    #model.get('ikr'),
+                    model.get(self._current.split('.')[0]),
+                    parameters=self.PARAM + [self._model_dose] + ['physical_constants.T'],
+                    current=self._current,
+                )
             else:
                 self.m = markov.LinearModel.from_component(
                     #model.get('ikr'),
                     model.get(self._current.split('.')[0]),
-                    parameters=self.PARAM + [self._model_dose],
+                    parameters=self.PARAM + [self._model_dose] + ['physical_constants.T'],
                     current=self._current,
                 )
 
@@ -249,11 +271,13 @@ class Model(pints.ForwardModel):
             self.simulation1.set_state(self.init_state)
             self.simulation2.set_state(self.init_state)
             self._update_dose()  # set after state in case D is state
+            self._update_temperature()
             self.pre_state = None
         else:
             self.simulation1.reset()
             self.simulation2.reset()
             self._update_dose()  # set before state in case pre_state has D
+            self._update_temperature()
             self.simulation1.set_state(self.pre_state)
             self.simulation2.set_state(self.pre_state)
 
@@ -369,10 +393,15 @@ class Model(pints.ForwardModel):
 
     def set_temperature(self, value):
         # Set simulation temperature (K)
-        try:
-            self._set_fix_parameters({'physical_constants.T': value})
-        except KeyError:
-            self._set_fix_parameters({'nernst.T': value})
+        self._temp = float(value)
+        self._update_temperature()
+        #try:
+        #    self._set_fix_parameters({'physical_constants.T': value})
+        #except KeyError:
+        #    self._set_fix_parameters({'nernst.T': value})
+
+    def _update_temperature(self):
+        self._set_fix_parameters({'physical_constants.T': self._temp})
 
     def set_dose(self, value):
         # Set dose concentration (nM)

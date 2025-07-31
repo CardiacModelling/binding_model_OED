@@ -16,7 +16,7 @@ ikr.C = 1
 use membrane.V
 
 IKr = p9 * O * (V - nernst.EK)
-    in [nA]
+    in [pA]
     oxmeta: membrane_rapid_delayed_rectifier_potassium_current
 
 k1 = p1 * exp(p2 * V)
@@ -40,8 +40,8 @@ p7 =  4.75152440999999995e-2 [mS/uF]
     in [mS/uF]
 p8 =  2.50856877999999991e-2 [1/mV]
     in [1/mV]
-p9 = 0.1524 [uS]
-    in [uS]
+p9 = 0.1524 [nS]
+    in [nS]
     oxmeta: membrane_rapid_delayed_rectifier_potassium_current_conductance
 
 dot(O) = koff * iOD + k1 * C + k4 * I - (k2 + k3 + kon * (D ^ hill)) * O
@@ -78,13 +78,13 @@ V = engine.pace
     in [mV]
 
 [extracellular]
-ko = 5.4 [mM]
+ko = 4 [mM]
     in [mM]
     oxmeta: extracellular_potassium_concentration
     label K_o
 
 [intracellular]
-ki = 130 [mM]
+ki = 140 [mM]
     in [mM]
     oxmeta: intracellular_potassium_concentration
     label K_i
@@ -94,7 +94,7 @@ F = 96485 [C/mol]
     in [C/mol]
 R = 8314 [mJ/mol/K]
     in [mJ/mol/K]
-T = 310 [K]
+T = 298.15 [K]
     in [K]
 
 [nernst]

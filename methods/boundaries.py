@@ -9,7 +9,7 @@ class Boundaries(pints.Boundaries):
     """
     Boundary constraints on the parameters
     """
-    def __init__(self, which_model='1', fix_hill=False, likelihood=False, ts=1):
+    def __init__(self, which_model='1', fix_hill=False, likelihood=False, ts=1, td=False, multi=False, all=False):
         '''
         which_model: (str) model number (e.g. '1')
         fix_hill: (bool) exclude the Hill coefficient if True.
@@ -20,6 +20,9 @@ class Boundaries(pints.Boundaries):
         self.fix_hill = fix_hill
         self.likelihood = likelihood
         self.ts = ts
+        self.td = td
+        self.multi = multi
+        self.all = all
 
         self._lower_kon = 1e-9
         self._upper_kon = 1
@@ -50,6 +53,28 @@ class Boundaries(pints.Boundaries):
 
         self._lower_sigma = 1e-2
         self._upper_sigma = 1e2
+
+        self._lower_controlT = 299.15
+        self._upper_controlT = 301.15
+
+        self._lower_initdrugT = 295.15
+        self._upper_initdrugT = 301.15
+
+        self._lower_Trange = 1e-9
+        self._upper_Trange = 10
+
+        if self.multi or self.all:
+            self._lower_controlT_m = 303.15
+            self._upper_controlT_m = 305.15
+
+            self._lower_initdrugT_m = 295.15
+            self._upper_initdrugT_m = 305.15
+            if self.all:
+                self._lower_controlT_o = 293.15
+                self._upper_controlT_o = 295.15
+
+                self._lower_initdrugT_o = 292.15
+                self._upper_initdrugT_o = 295.15
 
         self._lower = np.array([
             self._lower_kon,
@@ -136,12 +161,25 @@ class Boundaries(pints.Boundaries):
         else:
             raise ValueError(f'Unknown model {self.which_model}')
 
+        if self.td:
+            self._lower = np.append(self._lower, [self._lower_controlT, self._lower_initdrugT, self._lower_Trange])
+            self._upper = np.append(self._upper, [self._upper_controlT, self._upper_initdrugT, self._upper_Trange])
+            n_params+=3
+            if self.multi or self.all:
+                self._lower = np.append(self._lower, [self._lower_controlT_m, self._lower_initdrugT_m, self._lower_Trange])
+                self._upper = np.append(self._upper, [self._upper_controlT_m, self._upper_initdrugT_m, self._upper_Trange])
+                n_params+=3
+                if self.all:
+                    self._lower = np.append(self._lower, [self._lower_controlT_o, self._lower_initdrugT_o, self._lower_Trange])
+                    self._upper = np.append(self._upper, [self._upper_controlT_o, self._upper_initdrugT_o, self._upper_Trange])
+                    n_params+=3
+
         if self.likelihood:
             for i in range(0, self.ts):
                 self._lower = np.append(self._lower, self._lower_sigma)
                 self._upper = np.append(self._upper, self._upper_sigma)
                 n_params+=1
-        
+
         self._upper = pints.vector(self._upper)
         self._lower = pints.vector(self._lower)
 
@@ -187,53 +225,197 @@ class Boundaries(pints.Boundaries):
         if self.which_model in {'0a', '0b', '1', '2', '2i', '3', '4', '5', '5i'}:
             if self.fix_hill:
                 if self.likelihood:
-                    for i in range(0, self.ts):
-                        p[i+2] = unf(np.random.uniform(
-                            f(self._lower_sigma), f(self._upper_sigma)))
+                    if self.td:
+                        p[2] = np.random.uniform(self._lower_controlT, self._upper_controlT)
+                        p[3] = np.random.uniform(self._lower_initdrugT, self._upper_initdrugT)
+                        p[4] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                        if self.multi or self.all:
+                            p[5] = np.random.uniform(self._lower_controlT_m, self._upper_controlT_m)
+                            p[6] = np.random.uniform(self._lower_initdrugT_m, self._upper_initdrugT_m)
+                            p[7] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                            if self.all:
+                                p[8] = np.random.uniform(self._lower_controlT_o, self._upper_controlT_o)
+                                p[9] = np.random.uniform(self._lower_initdrugT_o, self._upper_initdrugT_o)
+                                p[10] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                                for i in range(0, self.ts):
+                                    p[i+11] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                            else:
+                                for i in range(0, self.ts):
+                                    p[i+8] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                        else:
+                            for i in range(0, self.ts):
+                                p[i+5] = unf(np.random.uniform(
+                                    f(self._lower_sigma), f(self._upper_sigma)))
+                    else:
+                        for i in range(0, self.ts):
+                            p[i+2] = unf(np.random.uniform(
+                                f(self._lower_sigma), f(self._upper_sigma)))
                 else:
                     pass
             else:
                 p[2] = unf(np.random.uniform(
                     f(self._lower_hill), f(self._upper_hill)))
                 if self.likelihood:
-                    for i in range(0, self.ts):
-                        p[i+3] = unf(np.random.uniform(
-                            f(self._lower_sigma), f(self._upper_sigma)))
+                    if self.td:
+                        p[3] = np.random.uniform(self._lower_controlT, self._upper_controlT)
+                        p[4] = np.random.uniform(self._lower_initdrugT, self._upper_initdrugT)
+                        p[5] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                        if self.multi or self.all:
+                            p[6] = np.random.uniform(self._lower_controlT_m, self._upper_controlT_m)
+                            p[7] = np.random.uniform(self._lower_initdrugT_m, self._upper_initdrugT_m)
+                            p[8] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                            if self.all:
+                                p[9] = np.random.uniform(self._lower_controlT_o, self._upper_controlT_o)
+                                p[10] = np.random.uniform(self._lower_initdrugT_o, self._upper_initdrugT_o)
+                                p[11] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                                for i in range(0, self.ts):
+                                    p[i+12] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                            else:
+                                for i in range(0, self.ts):
+                                    p[i+9] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                        else:
+                            for i in range(0, self.ts):
+                                p[i+6] = unf(np.random.uniform(
+                                    f(self._lower_sigma), f(self._upper_sigma)))
+                    else:
+                        for i in range(0, self.ts):
+                            p[i+3] = unf(np.random.uniform(
+                                f(self._lower_sigma), f(self._upper_sigma)))
         elif self.which_model in {'8', '9'}:
             p[2] = unf(np.random.uniform(
                 f(self._lower_kon), f(self._upper_kon)))
             if self.fix_hill:
                 if self.likelihood:
-                    for i in range(0, self.ts):
-                        p[i+3] = unf(np.random.uniform(
-                            f(self._lower_sigma), f(self._upper_sigma)))
+                    if self.td:
+                        p[3] = np.random.uniform(self._lower_controlT, self._upper_controlT)
+                        p[4] = np.random.uniform(self._lower_initdrugT, self._upper_initdrugT)
+                        p[5] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                        if self.multi or self.all:
+                            p[6] = np.random.uniform(self._lower_controlT_m, self._upper_controlT_m)
+                            p[7] = np.random.uniform(self._lower_initdrugT_m, self._upper_initdrugT_m)
+                            p[8] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                            if self.all:
+                                p[9] = np.random.uniform(self._lower_controlT_o, self._upper_controlT_o)
+                                p[10] = np.random.uniform(self._lower_initdrugT_o, self._upper_initdrugT_o)
+                                p[11] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                                for i in range(0, self.ts):
+                                    p[i+12] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                            else:
+                                for i in range(0, self.ts):
+                                    p[i+9] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                        else:
+                            for i in range(0, self.ts):
+                                p[i+6] = unf(np.random.uniform(
+                                    f(self._lower_sigma), f(self._upper_sigma)))
+                    else:
+                        for i in range(0, self.ts):
+                            p[i+3] = unf(np.random.uniform(
+                                f(self._lower_sigma), f(self._upper_sigma)))
                 else:
                     pass
             else:
                 p[3] = unf(np.random.uniform(
                     f(self._lower_hill), f(self._upper_hill)))
                 if self.likelihood:
-                    for i in range(0, self.ts):
-                        p[i+4] = unf(np.random.uniform(
-                            f(self._lower_sigma), f(self._upper_sigma)))
-                
+                    if self.td:
+                        p[4] = np.random.uniform(self._lower_controlT, self._upper_controlT)
+                        p[5] = np.random.uniform(self._lower_initdrugT, self._upper_initdrugT)
+                        p[6] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                        if self.multi or self.all:
+                            p[7] = np.random.uniform(self._lower_controlT_m, self._upper_controlT_m)
+                            p[8] = np.random.uniform(self._lower_initdrugT_m, self._upper_initdrugT_m)
+                            p[9] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                            if self.all:
+                                p[10] = np.random.uniform(self._lower_controlT_o, self._upper_controlT_o)
+                                p[11] = np.random.uniform(self._lower_initdrugT_o, self._upper_initdrugT_o)
+                                p[12] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                                for i in range(0, self.ts):
+                                    p[i+13] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                            else:
+                                for i in range(0, self.ts):
+                                    p[i+10] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                        else:
+                            for i in range(0, self.ts):
+                                p[i+7] = unf(np.random.uniform(
+                                    f(self._lower_sigma), f(self._upper_sigma)))
+                    else:
+                        for i in range(0, self.ts):
+                            p[i+4] = unf(np.random.uniform(
+                                f(self._lower_sigma), f(self._upper_sigma)))
+
         elif self.which_model == '6':
             p[2] = unf(np.random.uniform(
                 f(self._lower_k2f), f(self._upper_k2f)))
             if self.fix_hill:
                 if self.likelihood:
-                    for i in range(0, self.ts):
-                        p[i+3] = unf(np.random.uniform(
-                            f(self._lower_sigma), f(self._upper_sigma)))
+                    if self.td:
+                        p[3] = np.random.uniform(self._lower_controlT, self._upper_controlT)
+                        p[4] = np.random.uniform(self._lower_initdrugT, self._upper_initdrugT)
+                        p[5] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                        if self.multi or self.all:
+                            p[6] = np.random.uniform(self._lower_controlT_m, self._upper_controlT_m)
+                            p[7] = np.random.uniform(self._lower_initdrugT_m, self._upper_initdrugT_m)
+                            p[8] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                            if self.all:
+                                p[9] = np.random.uniform(self._lower_controlT_o, self._upper_controlT_o)
+                                p[10] = np.random.uniform(self._lower_initdrugT_o, self._upper_initdrugT_o)
+                                p[11] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                                for i in range(0, self.ts):
+                                    p[i+12] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                            else:
+                                for i in range(0, self.ts):
+                                    p[i+9] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                        else:
+                            for i in range(0, self.ts):
+                                p[i+6] = unf(np.random.uniform(
+                                    f(self._lower_sigma), f(self._upper_sigma)))
+                    else:
+                        for i in range(0, self.ts):
+                            p[i+3] = unf(np.random.uniform(
+                                f(self._lower_sigma), f(self._upper_sigma)))
                 else:
                     pass
             else:
                 p[3] = unf(np.random.uniform(
                     f(self._lower_hill), f(self._upper_hill)))
                 if self.likelihood:
-                    for i in range(0, self.ts):
-                        p[i+4] = unf(np.random.uniform(
-                            f(self._lower_sigma), f(self._upper_sigma)))
+                    if self.td:
+                        p[4] = np.random.uniform(self._lower_controlT, self._upper_controlT)
+                        p[5] = np.random.uniform(self._lower_initdrugT, self._upper_initdrugT)
+                        p[6] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                        if self.multi or self.all:
+                            p[7] = np.random.uniform(self._lower_controlT_m, self._upper_controlT_m)
+                            p[8] = np.random.uniform(self._lower_initdrugT_m, self._upper_initdrugT_m)
+                            p[9] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                            if self.all:
+                                p[10] = np.random.uniform(self._lower_controlT_o, self._upper_controlT_o)
+                                p[11] = np.random.uniform(self._lower_initdrugT_o, self._upper_initdrugT_o)
+                                p[12] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                                for i in range(0, self.ts):
+                                    p[i+13] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                            else:
+                                for i in range(0, self.ts):
+                                    p[i+10] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                        else:
+                            for i in range(0, self.ts):
+                                p[i+7] = unf(np.random.uniform(
+                                    f(self._lower_sigma), f(self._upper_sigma)))
+                    else:
+                        for i in range(0, self.ts):
+                            p[i+4] = unf(np.random.uniform(
+                                f(self._lower_sigma), f(self._upper_sigma)))
         elif self.which_model == '10':
             p[2] = unf(np.random.uniform(
                 f(self._lower_kon), f(self._upper_kon)))
@@ -241,18 +423,66 @@ class Boundaries(pints.Boundaries):
                 f(self._lower_k2f), f(self._upper_k2f)))
             if self.fix_hill:
                 if self.likelihood:
-                    for i in range(0, self.ts):
-                        p[i+4] = unf(np.random.uniform(
-                            f(self._lower_sigma), f(self._upper_sigma)))
+                    if self.td:
+                        p[4] = np.random.uniform(self._lower_controlT, self._upper_controlT)
+                        p[5] = np.random.uniform(self._lower_initdrugT, self._upper_initdrugT)
+                        p[6] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                        if self.multi or self.all:
+                            p[7] = np.random.uniform(self._lower_controlT_m, self._upper_controlT_m)
+                            p[8] = np.random.uniform(self._lower_initdrugT_m, self._upper_initdrugT_m)
+                            p[9] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                            if self.all:
+                                p[10] = np.random.uniform(self._lower_controlT_o, self._upper_controlT_o)
+                                p[11] = np.random.uniform(self._lower_initdrugT_o, self._upper_initdrugT_o)
+                                p[12] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                                for i in range(0, self.ts):
+                                    p[i+13] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                            else:
+                                for i in range(0, self.ts):
+                                    p[i+10] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                        else:
+                            for i in range(0, self.ts):
+                                p[i+7] = unf(np.random.uniform(
+                                    f(self._lower_sigma), f(self._upper_sigma)))
+                    else:
+                        for i in range(0, self.ts):
+                            p[i+4] = unf(np.random.uniform(
+                                f(self._lower_sigma), f(self._upper_sigma)))
                 else:
                     pass
             else:
                 p[4] = unf(np.random.uniform(
                     f(self._lower_hill), f(self._upper_hill)))
                 if self.likelihood:
-                    for i in range(0, self.ts):
-                        p[i+5] = unf(np.random.uniform(
-                            f(self._lower_sigma), f(self._upper_sigma)))
+                    if self.td:
+                        p[5] = np.random.uniform(self._lower_controlT, self._upper_controlT)
+                        p[6] = np.random.uniform(self._lower_initdrugT, self._upper_initdrugT)
+                        p[7] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                        if self.multi or self.all:
+                            p[8] = np.random.uniform(self._lower_controlT_m, self._upper_controlT_m)
+                            p[9] = np.random.uniform(self._lower_initdrugT_m, self._upper_initdrugT_m)
+                            p[10] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                            if self.all:
+                                p[11] = np.random.uniform(self._lower_controlT_o, self._upper_controlT_o)
+                                p[12] = np.random.uniform(self._lower_initdrugT_o, self._upper_initdrugT_o)
+                                p[13] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                                for i in range(0, self.ts):
+                                    p[i+14] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                            else:
+                                for i in range(0, self.ts):
+                                    p[i+11] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                        else:
+                            for i in range(0, self.ts):
+                                p[i+8] = unf(np.random.uniform(
+                                    f(self._lower_sigma), f(self._upper_sigma)))
+                    else:
+                        for i in range(0, self.ts):
+                            p[i+5] = unf(np.random.uniform(
+                                f(self._lower_sigma), f(self._upper_sigma)))
         elif self.which_model == '11':
             p[2] = unf(np.random.uniform(
                 f(self._lower_ku), f(self._upper_ku)))
@@ -260,18 +490,66 @@ class Boundaries(pints.Boundaries):
                 f(self._lower_kt), f(self._upper_kt)))
             if self.fix_hill:
                 if self.likelihood:
-                    for i in range(0, self.ts):
-                        p[i+4] = unf(np.random.uniform(
-                            f(self._lower_sigma), f(self._upper_sigma)))
+                    if self.td:
+                        p[4] = np.random.uniform(self._lower_controlT, self._upper_controlT)
+                        p[5] = np.random.uniform(self._lower_initdrugT, self._upper_initdrugT)
+                        p[6] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                        if self.multi or self.all:
+                            p[7] = np.random.uniform(self._lower_controlT_m, self._upper_controlT_m)
+                            p[8] = np.random.uniform(self._lower_initdrugT_m, self._upper_initdrugT_m)
+                            p[9] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                            if self.all:
+                                p[10] = np.random.uniform(self._lower_controlT_o, self._upper_controlT_o)
+                                p[11] = np.random.uniform(self._lower_initdrugT_o, self._upper_initdrugT_o)
+                                p[12] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                                for i in range(0, self.ts):
+                                    p[i+13] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                            else:
+                                for i in range(0, self.ts):
+                                    p[i+10] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                        else:
+                            for i in range(0, self.ts):
+                                p[i+7] = unf(np.random.uniform(
+                                    f(self._lower_sigma), f(self._upper_sigma)))
+                    else:
+                        for i in range(0, self.ts):
+                            p[i+4] = unf(np.random.uniform(
+                                f(self._lower_sigma), f(self._upper_sigma)))
                 else:
                     pass
             else:
                 p[4] = unf(np.random.uniform(
                     f(self._lower_hill), f(self._upper_hill)))
                 if self.likelihood:
-                    for i in range(0, self.ts):
-                        p[i+5] = unf(np.random.uniform(
-                            f(self._lower_sigma), f(self._upper_sigma)))
+                    if self.td:
+                        p[5] = np.random.uniform(self._lower_controlT, self._upper_controlT)
+                        p[6] = np.random.uniform(self._lower_initdrugT, self._upper_initdrugT)
+                        p[7] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                        if self.multi or self.all:
+                            p[8] = np.random.uniform(self._lower_controlT_m, self._upper_controlT_m)
+                            p[9] = np.random.uniform(self._lower_initdrugT_m, self._upper_initdrugT_m)
+                            p[10] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                            if self.all:
+                                p[11] = np.random.uniform(self._lower_controlT_o, self._upper_controlT_o)
+                                p[12] = np.random.uniform(self._lower_initdrugT_o, self._upper_initdrugT_o)
+                                p[13] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                                for i in range(0, self.ts):
+                                    p[i+14] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                            else:
+                                for i in range(0, self.ts):
+                                    p[i+11] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                        else:
+                            for i in range(0, self.ts):
+                                p[i+8] = unf(np.random.uniform(
+                                    f(self._lower_sigma), f(self._upper_sigma)))
+                    else:
+                        for i in range(0, self.ts):
+                            p[i+5] = unf(np.random.uniform(
+                                f(self._lower_sigma), f(self._upper_sigma)))
         elif self.which_model == '7':
             p[2] = unf(np.random.uniform(
                 f(self._lower_kon), f(self._upper_kon)))
@@ -279,18 +557,66 @@ class Boundaries(pints.Boundaries):
                 f(self._lower_kon), f(self._upper_kon)))
             if self.fix_hill:
                 if self.likelihood:
-                    for i in range(0, self.ts):
-                        p[i+4] = unf(np.random.uniform(
-                            f(self._lower_sigma), f(self._upper_sigma)))
+                    if self.td:
+                        p[4] = np.random.uniform(self._lower_controlT, self._upper_controlT)
+                        p[5] = np.random.uniform(self._lower_initdrugT, self._upper_initdrugT)
+                        p[6] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                        if self.multi or self.all:
+                            p[7] = np.random.uniform(self._lower_controlT_m, self._upper_controlT_m)
+                            p[8] = np.random.uniform(self._lower_initdrugT_m, self._upper_initdrugT_m)
+                            p[9] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                            if self.all:
+                                p[10] = np.random.uniform(self._lower_controlT_o, self._upper_controlT_o)
+                                p[11] = np.random.uniform(self._lower_initdrugT_o, self._upper_initdrugT_o)
+                                p[12] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                                for i in range(0, self.ts):
+                                    p[i+13] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                            else:
+                                for i in range(0, self.ts):
+                                    p[i+10] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                        else:
+                            for i in range(0, self.ts):
+                                p[i+7] = unf(np.random.uniform(
+                                    f(self._lower_sigma), f(self._upper_sigma)))
+                    else:
+                        for i in range(0, self.ts):
+                            p[i+4] = unf(np.random.uniform(
+                                f(self._lower_sigma), f(self._upper_sigma)))
                 else:
                     pass
             else:
                 p[4] = unf(np.random.uniform(
                     f(self._lower_hill), f(self._upper_hill)))
                 if self.likelihood:
-                    for i in range(0, self.ts):
-                        p[i+5] = unf(np.random.uniform(
-                            f(self._lower_sigma), f(self._upper_sigma)))
+                    if self.td:
+                        p[5] = np.random.uniform(self._lower_controlT, self._upper_controlT)
+                        p[6] = np.random.uniform(self._lower_initdrugT, self._upper_initdrugT)
+                        p[7] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                        if self.multi or self.all:
+                            p[8] = np.random.uniform(self._lower_controlT_m, self._upper_controlT_m)
+                            p[9] = np.random.uniform(self._lower_initdrugT_m, self._upper_initdrugT_m)
+                            p[10] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                            if self.all:
+                                p[11] = np.random.uniform(self._lower_controlT_o, self._upper_controlT_o)
+                                p[12] = np.random.uniform(self._lower_initdrugT_o, self._upper_initdrugT_o)
+                                p[13] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                                for i in range(0, self.ts):
+                                    p[i+14] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                            else:
+                                for i in range(0, self.ts):
+                                    p[i+11] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                        else:
+                            for i in range(0, self.ts):
+                                p[i+8] = unf(np.random.uniform(
+                                    f(self._lower_sigma), f(self._upper_sigma)))
+                    else:
+                        for i in range(0, self.ts):
+                            p[i+5] = unf(np.random.uniform(
+                                f(self._lower_sigma), f(self._upper_sigma)))
         elif self.which_model == '12':
             p[0] = unf(np.random.uniform(f(self._lower_kmax_fda), f(self._upper_kmax_fda)))
             p[1] = unf(np.random.uniform(f(self._lower_ku_fda), f(self._upper_ku_fda)))
@@ -298,32 +624,129 @@ class Boundaries(pints.Boundaries):
             if self.fix_hill:
                 p[3] = np.random.uniform(self._lower_vhalf_fda, self._upper_vhalf_fda)
                 if self.likelihood:
-                    for i in range(0, self.ts):
-                        p[i+4] = unf(np.random.uniform(
-                            f(self._lower_sigma), f(self._upper_sigma)))
+                    if self.td:
+                        p[4] = np.random.uniform(self._lower_controlT, self._upper_controlT)
+                        p[5] = np.random.uniform(self._lower_initdrugT, self._upper_initdrugT)
+                        p[6] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                        if self.multi or self.all:
+                            p[7] = np.random.uniform(self._lower_controlT_m, self._upper_controlT_m)
+                            p[8] = np.random.uniform(self._lower_initdrugT_m, self._upper_initdrugT_m)
+                            p[9] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                            if self.all:
+                                p[10] = np.random.uniform(self._lower_controlT_o, self._upper_controlT_o)
+                                p[11] = np.random.uniform(self._lower_initdrugT_o, self._upper_initdrugT_o)
+                                p[12] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                                for i in range(0, self.ts):
+                                    p[i+13] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                            else:
+                                for i in range(0, self.ts):
+                                    p[i+10] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                        else:
+                            for i in range(0, self.ts):
+                                p[i+7] = unf(np.random.uniform(
+                                    f(self._lower_sigma), f(self._upper_sigma)))
+                    else:
+                        for i in range(0, self.ts):
+                            p[i+4] = unf(np.random.uniform(
+                                f(self._lower_sigma), f(self._upper_sigma)))
             else:
                 p[3] = unf(np.random.uniform(f(self._lower_hill), f(self._upper_hill)))
                 p[4] = np.random.uniform(self._lower_vhalf_fda, self._upper_vhalf_fda)
                 if self.likelihood:
-                    for i in range(0, self.ts):
-                        p[i+5] = unf(np.random.uniform(
-                            f(self._lower_sigma), f(self._upper_sigma)))
+                    if self.td:
+                        p[5] = np.random.uniform(self._lower_controlT, self._upper_controlT)
+                        p[6] = np.random.uniform(self._lower_initdrugT, self._upper_initdrugT)
+                        p[7] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                        if self.multi or self.all:
+                            p[8] = np.random.uniform(self._lower_controlT_m, self._upper_controlT_m)
+                            p[9] = np.random.uniform(self._lower_initdrugT_m, self._upper_initdrugT_m)
+                            p[10] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                            if self.all:
+                                p[11] = np.random.uniform(self._lower_controlT_o, self._upper_controlT_o)
+                                p[12] = np.random.uniform(self._lower_initdrugT_o, self._upper_initdrugT_o)
+                                p[13] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                                for i in range(0, self.ts):
+                                    p[i+14] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                            else:
+                                for i in range(0, self.ts):
+                                    p[i+11] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                        else:
+                            for i in range(0, self.ts):
+                                p[i+8] = unf(np.random.uniform(
+                                    f(self._lower_sigma), f(self._upper_sigma)))
+                    else:
+                        for i in range(0, self.ts):
+                            p[i+5] = unf(np.random.uniform(
+                                f(self._lower_sigma), f(self._upper_sigma)))
+
         elif self.which_model == '13':
             p[0] = unf(np.random.uniform(f(self._lower_kon), f(self._upper_kon)))
             p[1] = unf(np.random.uniform(f(self._lower_ku_fda), f(self._upper_ku_fda)))
             if self.fix_hill:
                 p[2] = np.random.uniform(self._lower_vhalf_fda, self._upper_vhalf_fda)
                 if self.likelihood:
-                    for i in range(0, self.ts):
-                        p[i+3] = unf(np.random.uniform(
-                            f(self._lower_sigma), f(self._upper_sigma)))
+                    if self.td:
+                        p[3] = np.random.uniform(self._lower_controlT, self._upper_controlT)
+                        p[4] = np.random.uniform(self._lower_initdrugT, self._upper_initdrugT)
+                        p[5] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                        if self.multi or self.all:
+                            p[6] = np.random.uniform(self._lower_controlT_m, self._upper_controlT_m)
+                            p[7] = np.random.uniform(self._lower_initdrugT_m, self._upper_initdrugT_m)
+                            p[8] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                            if self.all:
+                                p[9] = np.random.uniform(self._lower_controlT_o, self._upper_controlT_o)
+                                p[10] = np.random.uniform(self._lower_initdrugT_o, self._upper_initdrugT_o)
+                                p[11] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                                for i in range(0, self.ts):
+                                    p[i+12] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                            else:
+                                for i in range(0, self.ts):
+                                    p[i+9] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                        else:
+                            for i in range(0, self.ts):
+                                p[i+6] = unf(np.random.uniform(
+                                    f(self._lower_sigma), f(self._upper_sigma)))
+                    else:
+                        for i in range(0, self.ts):
+                            p[i+3] = unf(np.random.uniform(
+                                f(self._lower_sigma), f(self._upper_sigma)))
             else:
                 p[2] = unf(np.random.uniform(f(self._lower_hill), f(self._upper_hill)))
                 p[3] = np.random.uniform(self._lower_vhalf_fda, self._upper_vhalf_fda)
                 if self.likelihood:
-                    for i in range(0, self.ts):
-                        p[i+4] = unf(np.random.uniform(
-                            f(self._lower_sigma), f(self._upper_sigma)))
+                    if self.td:
+                        p[4] = np.random.uniform(self._lower_controlT, self._upper_controlT)
+                        p[5] = np.random.uniform(self._lower_initdrugT, self._upper_initdrugT)
+                        p[6] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                        if self.multi or self.all:
+                            p[7] = np.random.uniform(self._lower_controlT_m, self._upper_controlT_m)
+                            p[8] = np.random.uniform(self._lower_initdrugT_m, self._upper_initdrugT_m)
+                            p[9] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                            if self.all:
+                                p[10] = np.random.uniform(self._lower_controlT_o, self._upper_controlT_o)
+                                p[11] = np.random.uniform(self._lower_initdrugT_o, self._upper_initdrugT_o)
+                                p[12] = unf(np.random.uniform(f(self._lower_Trange), f(self._upper_Trange)))
+                                for i in range(0, self.ts):
+                                    p[i+13] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                            else:
+                                for i in range(0, self.ts):
+                                    p[i+10] = unf(np.random.uniform(
+                                        f(self._lower_sigma), f(self._upper_sigma)))
+                        else:
+                            for i in range(0, self.ts):
+                                p[i+7] = unf(np.random.uniform(
+                                    f(self._lower_sigma), f(self._upper_sigma)))
+                    else:
+                        for i in range(0, self.ts):
+                            p[i+4] = unf(np.random.uniform(
+                                f(self._lower_sigma), f(self._upper_sigma)))
         else:
             pass
 

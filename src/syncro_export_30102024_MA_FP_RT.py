@@ -24,7 +24,7 @@ args = parser.parse_args()
 concs_all = {'diltiazem': [3000,10000,30000],
              'chlorpromazine':[150,500,1500],
              'quinidine': [150,500,1500],
-             'DMSO': [1]}
+             'DMSO': [0]}
 
 cols_all = {'diltiazem': [['02','03','04'],['05','06'],['07','08']],
             'chlorpromazine': [['10','11','12'],['13','14'],['15','16']],
@@ -197,6 +197,12 @@ def main(output_folder, drug, concs, cols):
             # save control data for splinefitting
             dictY = {'t': timesall, 'x':  np.average(controls_all, axis=0)}
             pd.DataFrame(dictY).to_csv(f"{output_folder}/synth_Y.csv", index=False)
+
+            # save standard deviation (in case not fitting)
+            #sd_all = []
+            #for c in controls_all:
+            #    sd_all.append(np.sqrt(np.var(c[19000:20000])))
+            #print(np.mean(sd_all))
 
 if __name__ == "__main__":
     drug = args.d

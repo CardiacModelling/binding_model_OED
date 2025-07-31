@@ -26,6 +26,7 @@ colrs = [f'C{i}' for i in range(len(concs))]
 sweeps = 10
 steps = 0.5
 sd = 10
+T_default = 298.15
 
 all_model_nums = ['1', '2', '2i', '3', '4', '5', '5i', '6',
                   '7', '8', '9', '10', '11', '12', '13']

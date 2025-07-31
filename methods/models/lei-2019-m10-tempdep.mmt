@@ -1,0 +1,139 @@
+[[model]]
+author: Chon Lok Lei
+name: Lei_2019_37C_IKr_Model10
+# Initial values
+ikr.I = 0
+ikr.CI = 0
+ikr.O = 0
+ikr.C = 1
+#ikr.D = 0
+ikr.ID = 0
+ikr.OD = 0
+ikr.CID = 0
+ikr.CD = 0
+
+[ikr]
+IKr = p9 * O * (membrane.V - nernst.EK)
+    in [pA]
+    oxmeta: membrane_rapid_delayed_rectifier_potassium_current
+
+k12 = (physical_constants.kb/physical_constants.h)*(physical_constants.T)*exp((del_S12/physical_constants.R) - 
+    (del_H12/(physical_constants.R*physical_constants.T)) + ((ze12*physical_constants.F*membrane.V)/(physical_constants.R*physical_constants.T)) + 
+    D12*membrane.V)
+k21 = (physical_constants.kb/physical_constants.h)*(physical_constants.T)*exp((del_S21/physical_constants.R) - 
+    (del_H21/(physical_constants.R*physical_constants.T)) + ((ze21*physical_constants.F*membrane.V)/(physical_constants.R*physical_constants.T)) + 
+    D21*membrane.V)
+k41 = (physical_constants.kb/physical_constants.h)*(physical_constants.T)*exp((del_S41/physical_constants.R) - 
+    (del_H41/(physical_constants.R*physical_constants.T)) + ((ze41*physical_constants.F*membrane.V)/(physical_constants.R*physical_constants.T)) + 
+    D41*membrane.V)
+k14 = (physical_constants.kb/physical_constants.h)*(physical_constants.T)*exp((del_S14/physical_constants.R) - 
+    (del_H14/(physical_constants.R*physical_constants.T)) + ((ze14*physical_constants.F*membrane.V)/(physical_constants.R*physical_constants.T)) + 
+    D14*membrane.V)
+
+del_S12 = 3.89543e5 [mJ/mol/K]
+    in [mJ/K/mol]
+del_S21 = -2.35457e5 [mJ/mol/K]
+    in [mJ/K/mol]
+del_S41 = 7.53932e4 [mJ/mol/K]
+    in [mJ/K/mol]
+del_S14 = 1.25715e5 [mJ/mol/K]
+    in [mJ/K/mol]
+del_H12 = 1.9533e8 [mJ/mol]
+    in [mJ/mol]
+del_H21 = 1.1514e7 [mJ/mol]
+    in [mJ/mol]
+del_H41 = 8.40174e7 [mJ/mol]
+    in [mJ/mol]
+del_H14 = 1.05487e8 [mJ/mol]
+    in [mJ/mol]
+ze12 = 9.59193
+ze21 = 9.98987
+ze41 = -1.85611
+ze14 = -2.71481
+D12 = -0.293601 [mV]
+    in [mV]
+D21 = -0.435358 [mV]
+    in [mV]
+D41 = 0.0931319 [mV]
+    in [mV]
+D14 = 0.0754196 [mV]
+    in [mV]
+
+p9 = 31 [nS]
+    in [nS]
+    oxmeta: membrane_rapid_delayed_rectifier_potassium_current_conductance
+
+dot(CI) = -k12 * CI + k21 * I + k41 * C - k14 * CI
+    in [1]
+dot(I) = -k14 * I + k41 * O + k12 * CI - k21 * I - (kon_i * (D ^ hill) * I - koff_i * ID)
+    in [1]
+dot(O) = -k21 * O + k12 * C + k14 * I - k41 * O - (kon_o * (D ^ hill) * O - koff_o * OD)
+    in [1]
+
+#dot(D) = 0
+D = 0
+    in [nM]
+
+kon_o = 1e-4 [1/ms]
+    in [1/ms]
+koff_o = 1e-4 [1/ms]
+    in [1/ms]
+kon_i = 1e-3 [1/ms]
+    in [1/ms]
+koff_i = kon_i * koff_o / kon_o
+    in [1/ms]
+hill = 1 [1]
+    in [1]
+k2f = 1e-2 [1/ms]
+    in [1/ms]
+dot(ID) = -k14 * ID + k41 * OD + k12 * CID - k21 * k2f * ID + (kon_i * (D ^ hill) * I - koff_i * ID)
+    in [1]
+dot(OD) = -k21 * k2f * OD + k12 * CD + k14 * ID - k41 * OD + (kon_o * (D ^ hill) * O - koff_o * OD)
+    in [1]
+dot(CID) = -k12 * CID + k21 * k2f * ID + k41 * CD - k14 * CID
+    in [1]
+dot(CD) = - k41 * CD + k14 * CID - k12 * CD + k21 * k2f * OD
+    in [1]
+
+dot(C) = - k41 * C + k14 * CI - k12 * C + k21 * O
+#C = 1 - CI - I - O - OD - ID - CID - CD
+    in [1]
+
+[engine]
+time = 0 bind time
+    in [ms]
+pace = 0 bind pace
+
+[membrane]
+V = engine.pace
+    desc: membrane potential
+    in [mV]
+
+[extracellular]
+ko = 4 [mM]
+    in [mM]
+    oxmeta: extracellular_potassium_concentration
+    label K_o
+
+[intracellular]
+ki = 140 [mM]
+    in [mM]
+    oxmeta: intracellular_potassium_concentration
+    label K_i
+
+[physical_constants]
+F = 96485 [C/mol]
+    in [C/mol]
+R = 8314 [mJ/mol/K]
+    in [mJ/mol/K]
+T = 298.15 [K]
+    in [K]
+kb = 1.380649e-20 [mJ/K]
+    in [mJ/K]
+h = 6.62607015e-28 [mJ/mHz]
+    in [mJ/mHz]
+
+[nernst]
+EK = physical_constants.R * physical_constants.T / physical_constants.F * log(extracellular.ko / intracellular.ki)
+    in [mV]
+    oxmeta: potassium_reversal_potential
