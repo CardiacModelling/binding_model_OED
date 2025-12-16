@@ -8,7 +8,7 @@ Cython==3.0.10
 dcor==0.6
 fdasrsf==2.5.11
 findiff==0.10.0
-fonttools==4.50.0
+fonttools==4.61.0
 joblib==1.4.2
 kiwisolver==1.4.5
 lazy_loader==0.4
